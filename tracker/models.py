@@ -70,3 +70,4 @@ class Result(models.Model):
     sets = models.PositiveIntegerField()
     reps = models.PositiveIntegerField()
     weight = models.FloatField()
+

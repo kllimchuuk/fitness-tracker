@@ -51,3 +51,4 @@ admin.site.register(Combination)
 admin.site.register(WorkoutSession)
 admin.site.register(WeightTracker)
 admin.site.register(Result)
+
