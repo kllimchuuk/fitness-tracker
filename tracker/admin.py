@@ -6,7 +6,7 @@ from django.db.models import ForeignKey, Q
 from django.forms.models import ModelChoiceField
 from django.http import HttpRequest
 
-from .models import (Combination, Exercise, Result, User, WeightTracker,
+from .models import (Exercise, ExerciseSet, Result, User, WeightTracker,
                      WorkoutPlan, WorkoutSession)
 
 
@@ -47,8 +47,7 @@ admin.site.register(User, UserAdmin)
 admin.site.register(WorkoutPlan, WorkoutPlanAdmin)
 
 admin.site.register(Exercise)
-admin.site.register(Combination)
+admin.site.register(ExerciseSet)
 admin.site.register(WorkoutSession)
 admin.site.register(WeightTracker)
 admin.site.register(Result)
-

@@ -1,6 +1,6 @@
 from django.contrib.auth.models import AbstractUser
 from django.db import models
-from django.db.models import Q
+from django.db.models import ManyToManyField, Q
 
 
 # Create your models here.
@@ -15,6 +15,10 @@ class User(AbstractUser):
     age = models.PositiveIntegerField(null=True, blank=True)
     height = models.FloatField(null=True, blank=True)
     goal = models.CharField(max_length=256, null=True, blank=True)
+    workout_plans: ManyToManyField
+    workout_plans = models.ManyToManyField(
+        "WorkoutPlan", related_name="subscribers", blank=True
+    )
 
 
 class Exercise(models.Model):
@@ -25,7 +29,9 @@ class Exercise(models.Model):
 
 class WeightTracker(models.Model):
     user = models.ForeignKey(
-        "User", on_delete=models.CASCADE, limit_choices_to={"status": "CUSTOMER"}
+        "User",
+        on_delete=models.CASCADE,
+        limit_choices_to=Q(status="CUSTOMER") | Q(status="ADMIN"),
     )
     date = models.DateField()
     weight = models.FloatField()
@@ -39,6 +45,11 @@ class WorkoutPlan(models.Model):
     )
     name = models.CharField(max_length=256)
     version = models.PositiveIntegerField(default=1)
+    description = models.TextField()
+    exercises: ManyToManyField
+    exercises = models.ManyToManyField(
+        "Exercise", through="ExerciseSet", related_name="workout_plans"
+    )
 
 
 class WorkoutSession(models.Model):
@@ -47,21 +58,28 @@ class WorkoutSession(models.Model):
         COMPLETED = "completed", "Completed"
 
     user = models.ForeignKey(
-        "User", on_delete=models.CASCADE, limit_choices_to={"status": "CUSTOMER"}
+        "User",
+        on_delete=models.CASCADE,
+        limit_choices_to=Q(status="CUSTOMER") | Q(status="ADMIN"),
     )
     plan = models.ForeignKey("WorkoutPlan", on_delete=models.CASCADE)
     duration_minutes = models.PositiveIntegerField()
     status = models.CharField(
         max_length=16, choices=Status.choices, default=Status.ACTIVE
     )
+    date = models.DateField()
+    time = models.TimeField()
 
 
-class Combination(models.Model):
-    plan = models.ForeignKey("WorkoutPlan", on_delete=models.CASCADE)
+class ExerciseSet(models.Model):
     exercise = models.ForeignKey("Exercise", on_delete=models.CASCADE)
+    workout_plan = models.ForeignKey("WorkoutPlan", on_delete=models.CASCADE)
     sets = models.PositiveIntegerField()
     reps = models.PositiveIntegerField()
     weight = models.FloatField()
+
+    class Meta:
+        unique_together = ("exercise", "workout_plan")
 
 
 class Result(models.Model):
@@ -71,3 +89,5 @@ class Result(models.Model):
     reps = models.PositiveIntegerField()
     weight = models.FloatField()
 
+    class Meta:
+        unique_together = ("session", "exercise")
