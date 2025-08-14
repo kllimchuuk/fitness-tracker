@@ -67,8 +67,7 @@ class WorkoutSession(models.Model):
     status = models.CharField(
         max_length=16, choices=Status.choices, default=Status.ACTIVE
     )
-    date = models.DateField()
-    time = models.TimeField()
+    start_time = models.DateTimeField()
 
 
 class ExerciseSet(models.Model):
@@ -80,14 +79,3 @@ class ExerciseSet(models.Model):
 
     class Meta:
         unique_together = ("exercise", "workout_plan")
-
-
-class Result(models.Model):
-    session = models.ForeignKey("WorkoutSession", on_delete=models.CASCADE)
-    exercise = models.ForeignKey("Exercise", on_delete=models.CASCADE)
-    sets = models.PositiveIntegerField()
-    reps = models.PositiveIntegerField()
-    weight = models.FloatField()
-
-    class Meta:
-        unique_together = ("session", "exercise")
