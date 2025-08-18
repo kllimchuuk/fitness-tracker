@@ -1,0 +1,33 @@
+services:
+  db:
+    image: postgres:14.18
+    container_name: tracker_db
+    environment:
+      POSTGRES_USER: tracker_user
+      POSTGRES_PASSWORD: tracker_password
+      POSTGRES_DB: tracker_db
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
+  web:
+    build: .
+    container_name: tracker_web
+    command: ["daphne", "-b", "0.0.0.0", "-p", "8000", "config.asgi:application"]
+    volumes:
+      - .:/config
+    ports:
+      - "8000:8000"
+    depends_on:
+      - db
+    environment:
+      DEBUG: "1"
+      SECRET_KEY: ${SECRET_KEY}
+      DB_HOST: db
+      DB_NAME: tracker_db
+      DB_USER: tracker_user
+      DB_PASSWORD: tracker_password
+
+volumes:
+  postgres_data:
