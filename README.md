@@ -1,11 +1,18 @@
-## Запуск проєкту
-
+# Клонування репозиторія
 ```bash 
 
-git clone https://github.com/kllimchuuk/fitness-tracker.git && cd fitness-tracker && docker compose up --build
+git clone https://github.com/kllimchuuk/fitness-tracker.git 
+cd fitness-tracker 
 ```
 
-## Доступ до застосунку:
-Після запуску ви зможете отримати доступ до застосунку за такими адресами:
+## Перед запуском проекту скопіюйте .env-example у .env і заповніть свої значення
+```bash 
 
-HTTP API: http://localhost:8000/
+cp .env-example .env
+```
+
+## Запуск проєкту
+```bash 
+
+docker compose up --build
+```
