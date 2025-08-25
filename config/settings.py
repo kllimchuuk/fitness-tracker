@@ -31,10 +31,9 @@ SECRET_KEY = os.getenv("SECRET_KEY")
 DEBUG = os.getenv("DEBUG")
 
 allowed_hosts_env = os.getenv("ALLOWED_HOSTS")
-if allowed_hosts_env:
-    ALLOWED_HOSTS: list[str] = allowed_hosts_env.split(",")
-else:
-    ALLOWED_HOSTS: list[str] = []
+ALLOWED_HOSTS: list[str] = (
+    allowed_hosts_env.split(",") if allowed_hosts_env else []
+)
 
 
 # Application definition
