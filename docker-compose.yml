@@ -2,8 +2,6 @@ services:
   db:
     image: postgres:14.18
     container_name: tracker_db
-    env_file:
-      - .env.docker
     environment:
       POSTGRES_USER: ${DB_USER}
       POSTGRES_PASSWORD: ${DB_PASSWORD}
@@ -26,9 +24,16 @@ services:
     ports:
       - "8000:8000"
     depends_on:
-      - db
-    env_file:
-      - .env.docker
+      - ${DB_HOST}
+    environment:
+      SECRET_KEY: ${SECRET_KEY}
+      DEBUG: ${DEBUG}
+      ALLOWED_HOSTS: ${ALLOWED_HOSTS}
+      DB_NAME: ${DB_NAME}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_HOST: ${DB_HOST}
+      DB_PORT: ${DB_PORT}
 volumes:
   postgres_data:
 
