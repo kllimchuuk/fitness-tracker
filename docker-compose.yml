@@ -36,4 +36,3 @@ services:
       DB_PORT: ${DB_PORT}
 volumes:
   postgres_data:
-
