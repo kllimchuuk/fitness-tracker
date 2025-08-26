@@ -1,19 +1,6 @@
-# Клонування репозиторія
+# Клонування репозиторія:
+Перед запуском проекту скопіюйте .env.example у .env та .env.docker і заповніть свої значення
 ```bash 
 
-git clone https://github.com/kllimchuuk/fitness-tracker.git 
-cd fitness-tracker 
+git clone https://github.com/kllimchuuk/fitness-tracker.git && cd fitness-tracker && cp .env.example .env && docker compose up --build
 ```
-
-## Перед запуском проекту скопіюйте .env.example у .env та .env.docker і заповніть свої значення
-```bash 
-
-cp .env.example .env
-```
-
-## Запуск проєкту
-```bash 
-
-docker compose up --build
-```
-
