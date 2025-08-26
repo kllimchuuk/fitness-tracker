@@ -1,0 +1,38 @@
+services:
+  db:
+    image: postgres:14.18
+    container_name: tracker_db
+    environment:
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
+  web:
+    build: .
+    container_name: tracker_web
+    command: >
+      gunicorn config.wsgi:application 
+      --bind 0.0.0.0:8000 
+      --workers 4
+    volumes:
+      - .:/config
+      - ./staticfiles:/config/staticfiles
+    ports:
+      - "8000:8000"
+    depends_on:
+      - ${DB_HOST}
+    environment:
+      SECRET_KEY: ${SECRET_KEY}
+      DEBUG: ${DEBUG}
+      ALLOWED_HOSTS: ${ALLOWED_HOSTS}
+      DB_NAME: ${DB_NAME}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_HOST: ${DB_HOST}
+      DB_PORT: ${DB_PORT}
+volumes:
+  postgres_data:
