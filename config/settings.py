@@ -135,3 +135,7 @@ STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 AUTH_USER_MODEL = "tracker.User"
+
+# Auth redirects
+LOGIN_REDIRECT_URL = "/"
+LOGIN_URL = "/login/"

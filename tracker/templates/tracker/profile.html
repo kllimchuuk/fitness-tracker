@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+
+{% block title %}Профіль{% endblock %}
+
+{% block content %}
+<h1>Профіль</h1>
+
+<section>
+  <h2>Користувач</h2>
+  <ul>
+    <li>Логін: {{ user.username }}</li>
+    <li>Email: {{ user.email }}</li>
+    <li>Status: {{ user.get_status_display }}</li>
+    <li>Вік: {{ user.age|default:"—" }}</li>
+    <li>Зріст: {{ user.height|default:"—" }}</li>
+    <li>Ціль: {{ user.goal|default:"—" }}</li>
+  </ul>
+</section>
+
+<section>
+  <h2>Підписки на плани</h2>
+  <ul>
+    {% for plan in subscriptions %}
+      <li>{{ plan.name }} (v{{ plan.version }})</li>
+    {% empty %}
+      <li>Немає підписок</li>
+    {% endfor %}
+  </ul>
+</section>
+
+<section>
+  <h2>Активні сесії</h2>
+  <ul>
+    {% for s in sessions %}
+      <li>Діє до: {{ s.expire_date }}</li>
+    {% empty %}
+      <li>Немає активних сесій</li>
+    {% endfor %}
+  </ul>
+</section>
+{% endblock %}
+
+

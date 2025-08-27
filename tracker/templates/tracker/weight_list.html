@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+
+{% block title %}Вага{% endblock %}
+
+{% block content %}
+<h1>Мої вагові записи</h1>
+<ul>
+  {% for w in weights %}
+    <li>{{ w.date }} — {{ w.weight }} кг</li>
+  {% empty %}
+    <li>Записів немає</li>
+  {% endfor %}
+{% endblock %}
+
+

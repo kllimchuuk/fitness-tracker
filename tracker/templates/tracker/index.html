@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+
+{% block title %}Головна — Fitness Tracker{% endblock %}
+
+{% block content %}
+<h1>Вітаємо у Fitness Tracker</h1>
+
+<section>
+    <ul>
+        <li>Кількість вправ: <strong>{{ exercises_count }}</strong></li>
+        <li>Кількість планів тренувань: <strong>{{ plans_count }}</strong></li>
+        <li>Активних сесій зараз: <strong>{{ active_sessions_count }}</strong></li>
+    </ul>
+</section>
+{% endblock %}
+
+

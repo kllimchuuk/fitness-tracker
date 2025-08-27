@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+
+{% block title %}Сесії{% endblock %}
+
+{% block content %}
+<h1>Мої тренувальні сесії</h1>
+<ul>
+  {% for s in sessions %}
+    <li>{{ s.start_time }} — {{ s.plan.name }} ({{ s.duration_minutes }} хв) — {{ s.get_status_display }}</li>
+  {% empty %}
+    <li>Сесій немає</li>
+  {% endfor %}
+{% endblock %}
+
+
