@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2>Зведення</h2>
+<div class="cards">
+  <div class="card">
+    <div class="card-title">Вправи</div>
+    <div class="card-value">{{ exercise_count }}</div>
+  </div>
+  <div class="card">
+    <div class="card-title">Плани тренувань</div>
+    <div class="card-value">{{ workout_plan_count }}</div>
+  </div>
+  <div class="card">
+    <div class="card-title">Активні сесії</div>
+    <div class="card-value">{{ active_workout_session_count }}</div>
+  </div>
+  </div>
+{% endblock %}
+
+
