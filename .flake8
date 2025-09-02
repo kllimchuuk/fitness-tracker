@@ -3,4 +3,3 @@ exclude = get-pip.py,.venv
 # max-line-length = 100
 max-line-length = 88
 ignore = E501,W503,W504,F401,E402
-

@@ -1,0 +1,32 @@
+{% extends 'base.html' %}
+
+{% block title %}Почати тренування{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+  <div class="row justify-content-center">
+    <div class="col-md-6">
+      <div class="card">
+        <div class="card-header"><h5>Почати тренування</h5></div>
+        <div class="card-body">
+          <form method="post">
+            {% csrf_token %}
+            <div class="mb-3">
+              <label class="form-label" for="plan_id">Оберіть план</label>
+              <select class="form-control" id="plan_id" name="plan_id" required>
+                {% for plan in user_plans %}
+                  <option value="{{ plan.id }}">{{ plan.name }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="d-grid gap-2">
+              <button type="submit" class="btn btn-success">Почати</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+

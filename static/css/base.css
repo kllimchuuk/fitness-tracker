@@ -8,9 +8,24 @@ header h1{font-size:18px;margin:0}
 header a{color:var(--fg);text-decoration:none}
 nav a{margin-left:16px;color:var(--muted)}
 main{padding:24px 0}
-footer{border-top:1px solid #1c2128;color:var(--muted);padding:16px 0}
+footer{background:#0f1216 !important;border-top:1px solid #1c2128;color:#ffffff !important;padding:16px 0}
 .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:16px;margin-top:12px}
 .card{background:var(--card);border:1px solid #1c2128;border-radius:10px;padding:16px}
 .card-title{color:var(--muted);font-size:13px;margin-bottom:8px}
 .card-value{font-size:28px;font-weight:700;color:var(--accent)}
+.card-body p{color:#ffffff !important}
+.card-body strong{color:#ffffff !important}
+.card-body h5{color:#ffffff !important}
+.card-header h5{color:#ffffff !important}
+.card-header h3{color:#ffffff !important}
+.text-muted{color:#ffffff !important}
+.form-label{color:#ffffff !important}
+.form-text{color:#ffffff !important}
+.alert{background-color:var(--card) !important;border-color:#1c2128 !important;color:#ffffff !important}
+.form-control{background-color:var(--card) !important;border-color:#1c2128 !important;color:#ffffff !important}
+.form-control:focus{background-color:var(--card) !important;border-color:var(--accent) !important;color:#ffffff !important;box-shadow:0 0 0 0.2rem rgba(59,169,255,0.25) !important}
+input[type="text"],input[type="email"],input[type="password"],input[type="number"],textarea{background-color:#ffffff !important;border-color:#dee2e6 !important;color:#212529 !important}
+input[type="text"]:focus,input[type="email"]:focus,input[type="password"]:focus,input[type="number"]:focus,textarea:focus{background-color:#ffffff !important;border-color:var(--accent) !important;color:#212529 !important;box-shadow:0 0 0 0.2rem rgba(59,169,255,0.25) !important}
+.form-control{width:100% !important;margin-bottom:10px !important}
+textarea.form-control{min-height:80px !important}
 
