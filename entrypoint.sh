@@ -14,4 +14,3 @@ echo "Collect static..."
 python manage.py collectstatic --noinput
 echo "Starting service..."
 exec "$@"
-

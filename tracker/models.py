@@ -1,26 +1,11 @@
-from django.contrib.auth.models import AbstractUser
+from typing import Any
+
+from django.conf import settings
 from django.db import models
 from django.db.models import ManyToManyField, Q
 
 
 # Create your models here.
-class User(AbstractUser):
-    class Status(models.TextChoices):
-        ADMIN = "ADMIN", "Admin"
-        CUSTOMER = "CUSTOMER", "Customer"
-
-    status = models.CharField(
-        max_length=16, choices=Status.choices, default=Status.CUSTOMER
-    )
-    age = models.PositiveIntegerField(null=True, blank=True)
-    height = models.FloatField(null=True, blank=True)
-    goal = models.CharField(max_length=256, null=True, blank=True)
-    workout_plans: ManyToManyField
-    workout_plans = models.ManyToManyField(
-        "WorkoutPlan", related_name="subscribers", blank=True
-    )
-
-
 class Exercise(models.Model):
     name = models.CharField(max_length=256)
     type = models.CharField(max_length=256)
@@ -29,7 +14,7 @@ class Exercise(models.Model):
 
 class WeightTracker(models.Model):
     user = models.ForeignKey(
-        "User",
+        settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
         limit_choices_to=Q(status="CUSTOMER") | Q(status="ADMIN"),
     )
@@ -39,15 +24,14 @@ class WeightTracker(models.Model):
 
 class WorkoutPlan(models.Model):
     creator = models.ForeignKey(
-        "User",
+        settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
         limit_choices_to=Q(status="CUSTOMER") | Q(status="ADMIN"),
     )
     name = models.CharField(max_length=256)
     version = models.PositiveIntegerField(default=1)
     description = models.TextField()
-    exercises: ManyToManyField
-    exercises = models.ManyToManyField(
+    exercises: Any = models.ManyToManyField(
         "Exercise", through="ExerciseSet", related_name="workout_plans"
     )
 
@@ -58,7 +42,7 @@ class WorkoutSession(models.Model):
         COMPLETED = "completed", "Completed"
 
     user = models.ForeignKey(
-        "User",
+        settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
         limit_choices_to=Q(status="CUSTOMER") | Q(status="ADMIN"),
     )

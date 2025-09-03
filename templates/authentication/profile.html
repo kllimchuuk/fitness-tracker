@@ -1,0 +1,77 @@
+{% extends 'base.html' %}
+
+{% block title %}Профіль користувача{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h3>Профіль користувача</h3>
+                    <a href="{% url 'authentication:profile_edit' %}" class="btn btn-primary">Редагувати</a>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h5>Основна інформація</h5>
+                            <p><strong>Username:</strong> {{ user.username }}</p>
+                            <p><strong>Email:</strong> {{ user.email }}</p>
+                            <p><strong>Ім'я:</strong> {{ user.first_name|default:"Не вказано" }}</p>
+                            <p><strong>Прізвище:</strong> {{ user.last_name|default:"Не вказано" }}</p>
+                            <p><strong>Статус:</strong> 
+                                <span class="badge {% if user.status == 'ADMIN' %}bg-danger{% else %}bg-success{% endif %}">
+                                    {{ user.get_status_display }}
+                                </span>
+                            </p>
+                        </div>
+                        <div class="col-md-6">
+                            <h5>Фізичні характеристики</h5>
+                            <p><strong>Вік:</strong> {{ user.age|default:"Не вказано" }} років</p>
+                            <p><strong>Зріст:</strong> {{ user.height|default:"Не вказано" }} м</p>
+                            <p><strong>Мета:</strong> {{ user.goal|default:"Не вказано" }}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5>Статистика</h5>
+                </div>
+                <div class="card-body">
+                    <p><strong>Дата реєстрації:</strong> {{ user.date_joined|date:"d.m.Y" }}</p>
+                    <p><strong>Останній вхід:</strong> {{ user.last_login|date:"d.m.Y H:i"|default:"Ніколи" }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row mt-4">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5>Активні сесії тренувань</h5>
+                </div>
+                <div class="card-body">
+                    {% if active_sessions %}
+                        <div class="list-group">
+                            {% for session in active_sessions %}
+                                <div class="list-group-item">
+                                    <h6 class="mb-1">{{ session.plan.name }}</h6>
+                                    <p class="mb-1">Тривалість: {{ session.duration_minutes }} хв</p>
+                                    <small>Початок: {{ session.start_time|date:"d.m.Y H:i" }}</small>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <p class="text-muted">У вас немає активних сесій тренувань.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
