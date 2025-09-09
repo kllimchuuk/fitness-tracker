@@ -37,13 +37,14 @@ ALLOWED_HOSTS: list[str] = allowed_hosts_env.split(",") if allowed_hosts_env els
 # Application definition
 
 INSTALLED_APPS = [
+    "tracker",
+    "authentication",
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
-    "tracker",
 ]
 
 MIDDLEWARE = [
@@ -136,3 +137,12 @@ STATICFILES_DIRS = [BASE_DIR / "static"]
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 AUTH_USER_MODEL = "tracker.User"
+
+# CSRF settings
+CSRF_COOKIE_SECURE = os.getenv("CSRF_COOKIE_SECURE", "False").lower() == "true"
+CSRF_COOKIE_HTTPONLY = os.getenv("CSRF_COOKIE_HTTPONLY", "True").lower() == "true"
+CSRF_COOKIE_SAMESITE = os.getenv("CSRF_COOKIE_SAMESITE", "Strict")
+csrf_trusted_origins_env = os.getenv("CSRF_TRUSTED_ORIGINS")
+CSRF_TRUSTED_ORIGINS = (
+    csrf_trusted_origins_env.split(",") if csrf_trusted_origins_env else []
+)

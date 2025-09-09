@@ -1,16 +1,17 @@
+from typing import Any, Dict
+
+from django.http import HttpRequest, HttpResponse
 from django.views.generic import TemplateView
 
 from tracker.models import Exercise, WorkoutPlan, WorkoutSession
+
 
 # Create your views here.
 class IndexView(TemplateView):
     template_name = "index.html"
 
-    def get_context_data(self, **kwargs):
+    def get_context_data(self, **kwargs: Any) -> Dict[str, Any]:
         context = super().get_context_data(**kwargs)
-        context["exercise_count"] = Exercise.objects.count()
-        context["workout_plan_count"] = WorkoutPlan.objects.count()
-        context["active_workout_session_count"] = WorkoutSession.objects.filter(
-            status=WorkoutSession.Status.ACTIVE
-        ).count()
+        context["user_id"] = self.request.session.get("user_id")
+        context["username"] = self.request.session.get("username")
         return context

@@ -1,21 +1,38 @@
 {% extends "base.html" %}
 
 {% block content %}
-<h2>Зведення</h2>
-<div class="cards">
-  <div class="card">
-    <div class="card-title">Вправи</div>
-    <div class="card-value">{{ exercise_count }}</div>
+<div class="welcome-container">
+  <div class="welcome-card">
+    <h2>Welcome to Fitness Tracker</h2>
+    
+    {% if user_id %}
+      <div class="user-info">
+        <p>Welcome back! You are logged in.</p>
+        <div class="auth-actions">
+          <a href="/authentication/logout/" class="auth-button">Logout</a>
+        </div>
+      </div>
+    {% else %}
+      <div class="auth-actions">
+        <a href="/authentication/login/" class="auth-button">Login</a>
+        <a href="/authentication/register/" class="auth-button secondary">Register</a>
+      </div>
+    {% endif %}
   </div>
-  <div class="card">
-    <div class="card-title">Плани тренувань</div>
-    <div class="card-value">{{ workout_plan_count }}</div>
-  </div>
-  <div class="card">
-    <div class="card-title">Активні сесії</div>
-    <div class="card-value">{{ active_workout_session_count }}</div>
-  </div>
-  </div>
-{% endblock %}
+</div>
 
+<style>
+.welcome-container{display:flex;justify-content:center;align-items:center;min-height:60vh}
+.welcome-card{background:#12151a;border:1px solid #1c2128;border-radius:10px;padding:32px;width:100%;max-width:500px;text-align:center}
+.welcome-card h2{margin:0 0 16px 0;color:#e8edf2}
+.welcome-card p{color:#9fb0c0;margin:0 0 24px 0;line-height:1.5}
+.user-info{margin-top:24px;padding-top:24px;border-top:1px solid #1c2128}
+.user-info p{color:#3ba9ff;margin:0 0 16px 0}
+.auth-actions{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
+.auth-button{background:#3ba9ff;color:white;border:none;border-radius:6px;padding:12px 24px;font-size:16px;font-weight:600;cursor:pointer;transition:opacity 0.2s;text-decoration:none;display:inline-block}
+.auth-button:hover{opacity:0.9}
+.auth-button.secondary{background:transparent;border:1px solid #3ba9ff;color:#3ba9ff}
+.auth-button.secondary:hover{background:#3ba9ff;color:white}
+</style>
+{% endblock %}
 

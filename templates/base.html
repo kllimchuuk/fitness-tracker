@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="uk">
+<html lang="en">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -11,8 +11,14 @@
       <div class="container">
         <h1><a href="/">Fitness Tracker</a></h1>
         <nav>
-          <a href="/">Головна</a>
-          <a href="/admin/">Адмін</a>
+          <a href="/">Home</a>
+          {% if user_id %}
+            <span class="user-indicator">Welcome, {{ username }}</span>
+            <a href="/authentication/logout/">Logout</a>
+          {% else %}
+            <a href="/authentication/login/">Login</a>
+            <a href="/authentication/register/">Register</a>
+          {% endif %}
         </nav>
       </div>
     </header>
@@ -25,6 +31,4 @@
       </div>
     </footer>
   </body>
-  </html>
-
-
+</html>
