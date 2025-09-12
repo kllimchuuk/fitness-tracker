@@ -13,7 +13,7 @@
         <nav>
           <a href="/">Home</a>
           {% if user_id %}
-            <span class="user-indicator">Welcome, {{ username }}</span>
+            <span class="user-indicator">Welcome, {{ email }}</span>
             <a href="/authentication/logout/">Logout</a>
           {% else %}
             <a href="/authentication/login/">Login</a>

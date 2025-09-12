@@ -1,29 +1,15 @@
 from typing import Any, cast
 
+from django.conf import settings
 from django.contrib import admin
+from django.contrib.auth import get_user_model
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from django.db.models import ForeignKey, Q
 from django.forms.models import ModelChoiceField
 from django.http import HttpRequest
 
-from .models import (Exercise, ExerciseSet, User, WeightTracker, WorkoutPlan,
+from .models import (Exercise, ExerciseSet, WeightTracker, WorkoutPlan,
                      WorkoutSession)
-
-
-class UserAdmin(BaseUserAdmin):
-    def get_fieldsets(self, request: HttpRequest, obj: Any = None) -> Any:
-        base_fieldsets = super().get_fieldsets(request, obj)
-        extra_fieldset = (
-            "Additional information",
-            {"fields": ("status", "age", "height", "goal")},
-        )
-        if isinstance(base_fieldsets, list):
-            base_fieldsets = tuple(base_fieldsets)
-        return cast(Any, base_fieldsets + (extra_fieldset,))
-
-    list_display = ("username", "email", "status", "is_staff", "is_active")
-    list_filter = ("status", "is_staff", "is_active")
-    search_fields = ("username", "email")
 
 
 class WorkoutPlanAdmin(admin.ModelAdmin):
@@ -34,6 +20,7 @@ class WorkoutPlanAdmin(admin.ModelAdmin):
         **kwargs: Any,
     ) -> ModelChoiceField:
         if db_field.name == "creator":
+            User = get_user_model()
             kwargs["queryset"] = User.objects.filter(
                 Q(status="CUSTOMER") | Q(status="ADMIN")
             )
@@ -43,7 +30,6 @@ class WorkoutPlanAdmin(admin.ModelAdmin):
         return field
 
 
-admin.site.register(User, UserAdmin)
 admin.site.register(WorkoutPlan, WorkoutPlanAdmin)
 
 admin.site.register(Exercise)
