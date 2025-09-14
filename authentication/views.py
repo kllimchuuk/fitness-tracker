@@ -16,79 +16,89 @@ GOAL_MAX_LEN = 256
 logger = logging.getLogger(__name__)
 
 
-def validate_email(email: str) -> str | None:
+class ValidationError(Exception):
+    pass
+
+
+def validate_email(email: str, check_exists: bool = True) -> str:
     if not email:
-        return "Email is required"
+        raise ValidationError("Email is required")
     if not EMAIL_REGEX.match(email):
-        return "Invalid email format"
-    if User.objects.filter(email=email).exists():
-        return "Email already exists"
-    return None
+        raise ValidationError("Invalid email format")
+    if check_exists and User.objects.filter(email=email).exists():
+        raise ValidationError("Email already exists")
+    return email
 
 
-def validate_password(password: str) -> str | None:
+def validate_password(password: str) -> str:
     if len(password) < PASSWORD_MIN_LEN:
-        return f"Password must be at least {PASSWORD_MIN_LEN} characters"
-    return None
+        raise ValidationError(
+            f"Password must be at least {PASSWORD_MIN_LEN} characters"
+        )
+    return password
 
 
-def validate_age(age: str) -> tuple[int | None, str | None]:
+def validate_age(age: str) -> int:
     if not age:
-        return None, None
-
+        raise ValidationError("Age is required")
     try:
         age_int = int(age)
         if age_int < AGE_MIN or age_int > AGE_MAX:
-            return None, "Invalid age"
-        return age_int, None
+            raise ValidationError("Invalid age")
+        return age_int
     except ValueError:
-        return None, "Invalid age"
+        raise ValidationError("Invalid age")
 
 
-def validate_height(height: str) -> tuple[float | None, str | None]:
+def validate_height(height: str) -> float:
     if not height:
-        return None, None
-
+        raise ValidationError("Height is required")
     try:
         height_float = float(height)
         if height_float < HEIGHT_MIN or height_float > HEIGHT_MAX:
-            return None, "Invalid height"
-        return height_float, None
+            raise ValidationError("Invalid height")
+        return height_float
     except ValueError:
-        return None, "Invalid height"
+        raise ValidationError("Invalid height")
 
 
-def validate_goal(goal: str) -> tuple[str | None, str | None]:
+def validate_goal(goal: str) -> str:
     if not goal:
-        return None, None
+        raise ValidationError("Goal is required")
     if len(goal) > GOAL_MAX_LEN:
-        return None, f"Goal must be {GOAL_MAX_LEN} characters or less"
-    return goal, None
+        raise ValidationError(f"Goal must be {GOAL_MAX_LEN} characters or less")
+    return goal
 
 
-def create_user(
-    email: str, password: str, age: int | None, height: float | None, goal: str | None
-) -> User:
+def create_user(email: str, password: str, age: int, height: float, goal: str) -> User:
     user = User(email=email)
     user.password = make_password(password)
     user.status = User.Status.CUSTOMER
 
-    if age:
-        user.age = age
-    if height:
-        user.height = height
-    if goal:
-        user.goal = goal
+    user.age = age
+    user.height = height
+    user.goal = goal
 
     return user
 
 
 def create_and_save_user(
-    email: str, password: str, age: int | None, height: float | None, goal: str | None
+    email: str, password: str, age: int, height: float, goal: str
 ) -> User:
     user = create_user(email, password, age, height, goal)
     user.save()
     return user
+
+
+def validate_all_fields(
+    email: str, password: str, age: str, height: str, goal: str
+) -> tuple[str, str, int, float, str]:
+    validated_email = validate_email(email)
+    validated_password = validate_password(password)
+    age_int = validate_age(age)
+    height_float = validate_height(height)
+    goal_str = validate_goal(goal)
+    return validated_email, validated_password, age_int, height_float, goal_str
 
 
 def render_error(request: HttpRequest, error_message: str) -> HttpResponse:
@@ -106,29 +116,16 @@ def register_view(request: HttpRequest) -> HttpResponse:
     height = request.POST.get("height", "")
     goal = request.POST.get("goal", "").strip()
 
-    email_error = validate_email(email)
-    if email_error:
-        return render_error(request, email_error)
-
-    password_error = validate_password(password)
-    if password_error:
-        return render_error(request, password_error)
-
-    validated_age, age_error = validate_age(age)
-    if age_error:
-        return render_error(request, age_error)
-
-    validated_height, height_error = validate_height(height)
-    if height_error:
-        return render_error(request, height_error)
-
-    validated_goal, goal_error = validate_goal(goal)
-    if goal_error:
-        return render_error(request, goal_error)
+    try:
+        validated_email, validated_password, age_int, height_float, goal_str = (
+            validate_all_fields(email, password, age, height, goal)
+        )
+    except ValidationError as e:
+        return render_error(request, str(e))
 
     try:
         user = create_and_save_user(
-            email, password, validated_age, validated_height, validated_goal
+            validated_email, validated_password, age_int, height_float, goal_str
         )
     except Exception as e:
         logger.error(f"Registration error: {e}")
@@ -136,8 +133,8 @@ def register_view(request: HttpRequest) -> HttpResponse:
 
     request.session.cycle_key()
     request.session["user_id"] = user.id
-    request.session["email"] = email
-    logger.info(f"New user registered: {email}")
+    request.session["email"] = validated_email
+    logger.info(f"New user registered: {validated_email}")
     return redirect("/")
 
 
@@ -151,19 +148,24 @@ def login_view(request: HttpRequest) -> HttpResponse:
             return render(request, "login.html", {"error": "Invalid credentials"})
 
         try:
-            user = User.objects.get(email=email)
+            validated_email = validate_email(email, check_exists=False)
+        except ValidationError:
+            return render(request, "login.html", {"error": "Invalid credentials"})
+
+        try:
+            user = User.objects.get(email=validated_email)
             if check_password(password, user.password):
                 request.session.cycle_key()
                 request.session["user_id"] = user.id
-                request.session["email"] = email
+                request.session["email"] = validated_email
 
-                logger.info(f"User logged in: {email}")
+                logger.info(f"User logged in: {validated_email}")
                 return redirect("/")
             else:
-                logger.warning(f"Failed login attempt for email: {email}")
+                logger.warning(f"Failed login attempt for email: {validated_email}")
                 return render(request, "login.html", {"error": "Invalid credentials"})
         except User.DoesNotExist:
-            logger.warning(f"Login attempt for non-existent email: {email}")
+            logger.warning(f"Login attempt for non-existent email: {validated_email}")
             return render(request, "login.html", {"error": "Invalid credentials"})
 
     return render(request, "login.html")
@@ -172,6 +174,15 @@ def login_view(request: HttpRequest) -> HttpResponse:
 @csrf_protect
 def logout_view(request: HttpRequest) -> HttpResponse:
     email = request.session.get("email", "Unknown")
+
+    if email != "Unknown":
+        try:
+            validated_email = validate_email(email, check_exists=False)
+        except ValidationError:
+            validated_email = "Invalid email format"
+    else:
+        validated_email = "Unknown"
+
     request.session.flush()
-    logger.info(f"User logged out: {email}")
+    logger.info(f"User logged out: {validated_email}")
     return redirect("/authentication/login/")

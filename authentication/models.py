@@ -1,10 +1,13 @@
+from typing import Any, Optional
+
 from django.contrib.auth.models import AbstractUser, BaseUserManager
 from django.db import models
-from typing import Any, Optional
 
 
 class UserManager(BaseUserManager["User"]):
-    def create_user(self, email: str, password: Optional[str] = None, **extra_fields: Any) -> "User":
+    def create_user(
+        self, email: str, password: Optional[str] = None, **extra_fields: Any
+    ) -> "User":
         if not email:
             raise ValueError("The Email field must be set")
         email = self.normalize_email(email)
@@ -13,7 +16,9 @@ class UserManager(BaseUserManager["User"]):
         user.save(using=self._db)
         return user
 
-    def create_superuser(self, email: str, password: Optional[str] = None, **extra_fields: Any) -> "User":
+    def create_superuser(
+        self, email: str, password: Optional[str] = None, **extra_fields: Any
+    ) -> "User":
         extra_fields.setdefault("is_staff", True)
         extra_fields.setdefault("is_superuser", True)
         extra_fields.setdefault("is_active", True)
@@ -47,4 +52,4 @@ class User(AbstractUser):
     REQUIRED_FIELDS = []
     username = None  # type: ignore[assignment]
 
-    objects: UserManager = UserManager() # type: ignore[assignment,misc]
+    objects: UserManager = UserManager()  # type: ignore[assignment,misc]
