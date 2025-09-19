@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="auth-container">
+  <div class="auth-card">
+    <h2>Register</h2>
+    <form method="post" class="auth-form">
+      {% csrf_token %}
+      <div class="form-group">
+        <input name="email" type="email" placeholder="Email" required>
+      </div>
+      <div class="form-group">
+        <input name="password" type="password" placeholder="Password" required>
+      </div>
+      <div class="form-group">
+        <input name="age" type="number" placeholder="Age" min="1" max="120">
+      </div>
+      <div class="form-group">
+        <input name="height" type="number" step="0.1" placeholder="Height (cm)" min="50" max="300">
+      </div>
+      <div class="form-group">
+        <input name="goal" placeholder="Fitness Goal" maxlength="256">
+      </div>
+      <button type="submit" class="auth-button">Register</button>
+      {% if error %}<div class="error-message">{{ error }}</div>{% endif %}
+    </form>
+    <div class="auth-links">
+      <p>Already have an account? <a href="/authentication/login/">Login</a></p>
+    </div>
+  </div>
+</div>
+{% endblock %}

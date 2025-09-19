@@ -1,4 +1,5 @@
 from django.urls import path
+
 from .views import IndexView
 
 app_name = "tracker"
@@ -6,5 +7,3 @@ app_name = "tracker"
 urlpatterns = [
     path("", IndexView.as_view(), name="index"),
 ]
-
-
