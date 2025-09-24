@@ -194,6 +194,7 @@ def logout_view(request: HttpRequest) -> HttpResponse:
     logger.info(f"User logged out: {validated_email}")
     return redirect("/authentication/login/")
 
+
 @csrf_protect
 def profile_view(request: HttpRequest) -> HttpResponse:
     user_id = request.session.get("user_id")
@@ -283,5 +284,3 @@ def change_password_view(request: HttpRequest) -> HttpResponse:
     request.session.cycle_key()
     logger.info(f"User password changed: {user.email}")
     return redirect("/authentication/profile/")
-
-    
