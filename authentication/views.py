@@ -283,3 +283,5 @@ def change_password_view(request: HttpRequest) -> HttpResponse:
     request.session.cycle_key()
     logger.info(f"User password changed: {user.email}")
     return redirect("/authentication/profile/")
+
+    
