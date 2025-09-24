@@ -193,3 +193,93 @@ def logout_view(request: HttpRequest) -> HttpResponse:
     request.session.flush()
     logger.info(f"User logged out: {validated_email}")
     return redirect("/authentication/login/")
+
+@csrf_protect
+def profile_view(request: HttpRequest) -> HttpResponse:
+    user_id = request.session.get("user_id")
+    if not user_id:
+        return redirect("/authentication/login/")
+
+    try:
+        user = User.objects.get(id=user_id)
+    except User.DoesNotExist:
+        request.session.flush()
+        return redirect("/authentication/login/")
+
+    return render(request,"profile.html",{"user_id": user.id, "email": user.email, "status": user.status, "age": user.age, "height": user.height, "goal": user.goal},)
+
+@csrf_protect
+def profile_edit_view(request: HttpRequest) -> HttpResponse:
+    user_id = request.session.get("user_id")
+    if not user_id:
+        return redirect("/authentication/login/")
+
+    try:
+        user = User.objects.get(id=user_id)
+    except User.DoesNotExist:
+        request.session.flush()
+        return redirect("/authentication/login/")
+
+    if request.method != "POST":
+        return render(request, "profile_edit.html", {"user": user})
+
+    age = request.POST.get("age", "")
+    height = request.POST.get("height", "")
+    goal = request.POST.get("goal", "")
+
+    if age:
+        try:
+            age_int = validate_age(age)
+        except ValidationError as e:
+            return render(request, "profile_edit.html", {"user": user, "error": str(e)})
+
+    if height:
+        try:
+            height_float = validate_height(height)
+        except ValidationError as e:
+            return render(request, "profile_edit.html", {"user": user, "error": str(e)})
+
+    if goal:
+        try:
+            goal_str = validate_goal(goal)
+        except ValidationError as e:
+            return render(request, "profile_edit.html", {"user": user, "error": str(e)})
+
+    user.save()
+    logger.info(f"User profile updated: {user.email}")
+    return redirect("/authentication/profile/")
+
+@csrf_protect
+def change_password_view(request: HttpRequest) -> HttpResponse:
+    user_id = request.session.get("user_id")
+    if not user_id:
+        return redirect("/authentication/login/")
+
+    try:
+        user = User.objects.get(id=user_id)
+    except User.DoesNotExist:
+        request.session.flush()
+        return redirect("/authentication/login/")
+
+    if request.method != "POST":
+        return render(request, "profile_password.html")
+
+    current = request.POST.get("current_password", "")
+    new = request.POST.get("new_password", "")
+
+    if not check_password(current, user.password):
+        return render(request, "profile_password.html", {"error": "Incorrect current password"})
+
+    try:
+        validate_password(new)
+    except ValidationError as e:
+        return render(request, "profile_password.html", {"error": str(e)})
+
+    if current == new:
+        return render(request, "profile_password.html", {"error": "The new password matches the old one"})
+
+    user.password = make_password(new)
+    user.save()
+    request.session.cycle_key()
+    logger.info(f"User password changed: {user.email}")
+    return redirect("/authentication/profile/")

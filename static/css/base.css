@@ -41,3 +41,11 @@ footer{border-top:1px solid #1c2128;color:var(--muted);padding:16px 0}
 .auth-actions{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
 .auth-button.secondary{background:transparent;border:1px solid #3ba9ff;color:#3ba9ff}
 .auth-button.secondary:hover{background:#3ba9ff;color:white}
+
+.form-group label {
+    color: #9fb0c0;
+    font-size: 14px;
+    margin-bottom: 4px;
+    display: block;
+  }
+  

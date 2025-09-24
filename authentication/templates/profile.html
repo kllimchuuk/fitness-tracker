@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="auth-container">
+  <div class="auth-card" style="max-width:600px">
+    <h2>Profile</h2>
+
+    <div class="cards" style="margin-top:0">
+      <div class="card">
+        <div class="card-title">Email</div>
+        <div class="card-value" style="font-size:18px;color:#e8edf2">{{ email }}</div>
+      </div>
+      <div class="card">
+        <div class="card-title">Status</div>
+        <div class="card-value" style="font-size:18px;color:#e8edf2">{{ status }}</div>
+      </div>
+      <div class="card">
+        <div class="card-title">Age</div>
+        <div class="card-value" style="font-size:18px;color:#e8edf2">{{ age|default:"—" }}</div>
+      </div>
+      <div class="card">
+        <div class="card-title">Height (cm)</div>
+        <div class="card-value" style="font-size:18px;color:#e8edf2">{{ height|default:"—" }}</div>
+      </div>
+      <div class="card" style="grid-column:1/-1">
+        <div class="card-title">Goal</div>
+        <div class="card-value" style="font-size:18px;color:#e8edf2">{{ goal|default:"—" }}</div>
+      </div>
+    </div>
+
+    <div class="auth-links" style="margin-top:24px">
+      <a href="/authentication/profile/edit/" class="auth-button secondary">Edit profile</a>
+      <a href="/authentication/profile/password/" class="auth-button secondary">Change password</a>
+    </div>
+  </div>
+</div>
+{% endblock %}
