@@ -2,11 +2,12 @@ import logging
 import re
 
 from django.contrib.auth.hashers import check_password, make_password
+from django.core.exceptions import ValidationError
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import redirect, render
 from django.views.decorators.csrf import csrf_protect
-from django.core.exceptions import ValidationError
 
+from .decorators import require_auth
 from .models import User
 
 EMAIL_REGEX = re.compile(r"^[^@]+@[^@]+\.[^@]+$")
@@ -143,11 +144,13 @@ def register_view(request: HttpRequest) -> HttpResponse:
     logger.info(f"New user registered: {validated_email}")
     return redirect("/")
 
+
 def authenticate_user(email: str, password: str) -> User:
     user = User.objects.get(email=email)
     if not check_password(password, user.password):
         raise ValidationError("Invalid password")
     return user
+
 
 @csrf_protect
 def login_view(request: HttpRequest) -> HttpResponse:
@@ -195,31 +198,29 @@ def logout_view(request: HttpRequest) -> HttpResponse:
     return redirect("/authentication/login/")
 
 
+@require_auth
 @csrf_protect
 def profile_view(request: HttpRequest) -> HttpResponse:
-    user_id = request.session.get("user_id")
-    if not user_id:
-        return redirect("/authentication/login/")
+    user = request.current_user # type: ignore[attr-defined]
 
-    try:
-        user = User.objects.get(id=user_id)
-    except User.DoesNotExist:
-        request.session.flush()
-        return redirect("/authentication/login/")
+    return render(
+        request,
+        "profile.html",
+        {
+            "user_id": user.id,
+            "email": user.email,
+            "status": user.status,
+            "age": user.age,
+            "height": user.height,
+            "goal": user.goal,
+        },
+    )
 
-    return render(request,"profile.html",{"user_id": user.id, "email": user.email, "status": user.status, "age": user.age, "height": user.height, "goal": user.goal},)
 
+@require_auth
 @csrf_protect
 def profile_edit_view(request: HttpRequest) -> HttpResponse:
-    user_id = request.session.get("user_id")
-    if not user_id:
-        return redirect("/authentication/login/")
-
-    try:
-        user = User.objects.get(id=user_id)
-    except User.DoesNotExist:
-        request.session.flush()
-        return redirect("/authentication/login/")
+    user = request.current_user # type: ignore[attr-defined]
 
     if request.method != "POST":
         return render(request, "profile_edit.html", {"user": user})
@@ -250,17 +251,11 @@ def profile_edit_view(request: HttpRequest) -> HttpResponse:
     logger.info(f"User profile updated: {user.email}")
     return redirect("/authentication/profile/")
 
+
+@require_auth
 @csrf_protect
 def change_password_view(request: HttpRequest) -> HttpResponse:
-    user_id = request.session.get("user_id")
-    if not user_id:
-        return redirect("/authentication/login/")
-
-    try:
-        user = User.objects.get(id=user_id)
-    except User.DoesNotExist:
-        request.session.flush()
-        return redirect("/authentication/login/")
+    user = request.current_user # type: ignore[attr-defined]
 
     if request.method != "POST":
         return render(request, "profile_password.html")
@@ -269,7 +264,9 @@ def change_password_view(request: HttpRequest) -> HttpResponse:
     new = request.POST.get("new_password", "")
 
     if not check_password(current, user.password):
-        return render(request, "profile_password.html", {"error": "Incorrect current password"})
+        return render(
+            request, "profile_password.html", {"error": "Incorrect current password"}
+        )
 
     try:
         validate_password(new)
@@ -277,7 +274,11 @@ def change_password_view(request: HttpRequest) -> HttpResponse:
         return render(request, "profile_password.html", {"error": str(e)})
 
     if current == new:
-        return render(request, "profile_password.html", {"error": "The new password matches the old one"})
+        return render(
+            request,
+            "profile_password.html",
+            {"error": "The new password matches the old one"},
+        )
 
     user.password = make_password(new)
     user.save()
