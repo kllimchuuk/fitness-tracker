@@ -1,47 +1,51 @@
 [tool.ruff]
 line-length = 88
+target-version = "py313"
+src = ["authentication", "tracker", "config"]
 
 [tool.ruff.lint]
-# Правила для перевірки
 select = [
-    "E",    # pycodestyle errors
-    "W",    # pycodestyle warnings
-    "F",    # pyflakes
-    "I",    # isort
-    "B",    # flake8-bugbear
-    "C4",   # flake8-comprehensions
-    "UP",   # pyupgrade
-    "ARG",  # flake8-unused-arguments
-    "SIM",  # flake8-simplify
-    "TCH",  # flake8-type-checking
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes
+    "I",   # isort
+    "B",   # flake8-bugbear
+    "C4",  # flake8-comprehensions
+    "UP",  # pyupgrade
+    "ARG", # flake8-unused-arguments
+    "SIM", # flake8-simplify
+    "TCH", # flake8-type-checking
+    "DJ",  # flake8-django
+    "S",   # bandit (базова безпека)
 ]
 
-# Правила для ігнорування
 ignore = [
-    "E501",  # line too long (handled by black)
-    "B008",  # do not perform function calls in argument defaults
-    "C901",  # too complex
+    "E501",
+    "B008",
+    "C901",
 ]
+preview = true
 
-# Виключені файли/папки
-exclude = [
-    ".git",
-    "__pycache__",
-    ".venv",
-    "venv",
-    ".env",
-    "migrations",
-    "staticfiles",
-    "static",
-]
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+line-ending = "lf"
 
 [tool.ruff.lint.isort]
-# Налаштування для isort
 known-first-party = ["authentication", "tracker", "config"]
-force-single-line = false
 combine-as-imports = true
 split-on-trailing-comma = true
+force-single-line = false
 
 [tool.ruff.lint.flake8-type-checking]
-# Налаштування для type checking
 runtime-evaluated-base-classes = ["django.db.models.Model"]
+
+[tool.ruff.lint.per-file-ignores]
+"**/migrations/*" = ["ALL"]
+"**/settings.py" = ["S105", "S106", "E501"]
+
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "config.settings"
+python_files = ["tests.py", "test_*.py", "*_test.py"]
+testpaths = ["authentication", "tracker"]
+addopts = "-q"
