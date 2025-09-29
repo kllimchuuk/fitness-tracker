@@ -1,5 +1,5 @@
 
-.PHONY: build up down logs migrations help
+.PHONY: build up down logs makemigrations migrate lint format format-check
 
 build:
 	docker compose build
