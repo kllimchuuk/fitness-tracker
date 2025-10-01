@@ -1,7 +1,9 @@
 from functools import wraps
-from typing import Any, Callable
+from typing import Any
+from typing import Callable
 
-from django.http import HttpRequest, HttpResponse
+from django.http import HttpRequest
+from django.http import HttpResponse
 from django.shortcuts import redirect
 
 from .models import User
@@ -20,7 +22,7 @@ def require_auth(view_func: Callable[..., HttpResponse]) -> Callable[..., HttpRe
             request.session.flush()
             return redirect("/authentication/login/")
 
-        setattr(request, "current_user", user)
+        request.current_user = user
         return view_func(request, *args, **kwargs)
 
     return wrapper

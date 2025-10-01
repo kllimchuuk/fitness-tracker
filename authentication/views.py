@@ -1,10 +1,13 @@
 import logging
 import re
 
-from django.contrib.auth.hashers import check_password, make_password
+from django.contrib.auth.hashers import check_password
+from django.contrib.auth.hashers import make_password
 from django.core.exceptions import ValidationError
-from django.http import HttpRequest, HttpResponse
-from django.shortcuts import redirect, render
+from django.http import HttpRequest
+from django.http import HttpResponse
+from django.shortcuts import redirect
+from django.shortcuts import render
 from django.views.decorators.csrf import csrf_protect
 
 from .decorators import require_auth
@@ -31,9 +34,7 @@ def validate_email(email: str, check_exists: bool = True) -> str:
 
 def validate_password(password: str) -> str:
     if len(password) < PASSWORD_MIN_LEN:
-        raise ValidationError(
-            f"Password must be at least {PASSWORD_MIN_LEN} characters"
-        )
+        raise ValidationError(f"Password must be at least {PASSWORD_MIN_LEN} characters")
     return password
 
 
@@ -82,9 +83,7 @@ def create_user(email: str, password: str, age: int, height: float, goal: str) -
     return user
 
 
-def create_and_save_user(
-    email: str, password: str, age: int, height: float, goal: str
-) -> User:
+def create_and_save_user(email: str, password: str, age: int, height: float, goal: str) -> User:
     user = create_user(email, password, age, height, goal)
     user.save()
     return user
@@ -131,9 +130,7 @@ def register_view(request: HttpRequest) -> HttpResponse:
         return render_error(request, str(e))
 
     try:
-        user = create_and_save_user(
-            validated_email, validated_password, age_int, height_float, goal_str
-        )
+        user = create_and_save_user(validated_email, validated_password, age_int, height_float, goal_str)
     except Exception as e:
         logger.error(f"Registration error: {e}")
         return render_error(request, "Registration failed. Please try again.")
@@ -201,7 +198,7 @@ def logout_view(request: HttpRequest) -> HttpResponse:
 @require_auth
 @csrf_protect
 def profile_view(request: HttpRequest) -> HttpResponse:
-    user = request.current_user # type: ignore[attr-defined]
+    user = request.current_user  # type: ignore[attr-defined]
 
     return render(
         request,
@@ -220,7 +217,7 @@ def profile_view(request: HttpRequest) -> HttpResponse:
 @require_auth
 @csrf_protect
 def profile_edit_view(request: HttpRequest) -> HttpResponse:
-    user = request.current_user # type: ignore[attr-defined]
+    user = request.current_user  # type: ignore[attr-defined]
 
     if request.method != "POST":
         return render(request, "profile_edit.html", {"user": user})
@@ -231,19 +228,19 @@ def profile_edit_view(request: HttpRequest) -> HttpResponse:
 
     if age:
         try:
-            age_int = validate_age(age)
+            validate_age(age)
         except ValidationError as e:
             return render(request, "profile_edit.html", {"user": user, "error": str(e)})
 
     if height:
         try:
-            height_float = validate_height(height)
+            validate_height(height)
         except ValidationError as e:
             return render(request, "profile_edit.html", {"user": user, "error": str(e)})
 
     if goal:
         try:
-            goal_str = validate_goal(goal)
+            validate_goal(goal)
         except ValidationError as e:
             return render(request, "profile_edit.html", {"user": user, "error": str(e)})
 
@@ -255,7 +252,7 @@ def profile_edit_view(request: HttpRequest) -> HttpResponse:
 @require_auth
 @csrf_protect
 def change_password_view(request: HttpRequest) -> HttpResponse:
-    user = request.current_user # type: ignore[attr-defined]
+    user = request.current_user  # type: ignore[attr-defined]
 
     if request.method != "POST":
         return render(request, "profile_password.html")
@@ -264,9 +261,7 @@ def change_password_view(request: HttpRequest) -> HttpResponse:
     new = request.POST.get("new_password", "")
 
     if not check_password(current, user.password):
-        return render(
-            request, "profile_password.html", {"error": "Incorrect current password"}
-        )
+        return render(request, "profile_password.html", {"error": "Incorrect current password"})
 
     try:
         validate_password(new)

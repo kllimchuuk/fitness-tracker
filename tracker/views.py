@@ -1,9 +1,6 @@
 from typing import Any
 
-from django.http import HttpRequest, HttpResponse
 from django.views.generic import TemplateView
-
-from tracker.models import Exercise, WorkoutPlan, WorkoutSession
 
 
 # Create your views here.

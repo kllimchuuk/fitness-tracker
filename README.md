@@ -4,12 +4,25 @@
 
 git clone https://github.com/kllimchuuk/fitness-tracker.git && cd fitness-tracker && cp .env.example .env && docker compose up --build
 ```
+
 ## Pre-commit
 
-У проєкті використовується pre-commit для автоформатування, лінтингу та  фіксів перед комітом.
+У проєкті використовується pre-commit для автоформатування, лінтингу та фіксів перед комітом.
 
 ### Встановлення
 ```bash
-pip install -r requirements-dev.txt
+pip install pre-commit
 pre-commit install
 ```
+
+### Запуск перевірок вручну
+```bash
+pre-commit run -a
+```
+
+### Лінтинг і форматування через Docker
+```bash
+make run-ruff
+```
+
+Після встановлення хуків всі коміти автоматично проходитимуть перевірки через Docker-контейнери.

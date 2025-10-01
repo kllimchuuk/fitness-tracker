@@ -1,5 +1,5 @@
 
-.PHONY: build up down logs makemigrations migrate lint format format-check
+.PHONY: build up down logs makemigrations migrate run-ruff
 
 build:
 	docker compose build
@@ -19,11 +19,6 @@ makemigrations:
 migrate:
 	docker compose exec web python manage.py migrate
 
-lint:
-	docker compose run --rm web ruff check .
-
-format:
-	docker compose run --rm web ruff formar .
-
-format-check:
-	docker compose run --rm web ruff format --check .
+run-ruff:
+	docker run --pull always -v .:/io --rm ghcr.io/astral-sh/ruff:latest format . \
+	&& docker run --pull always -v .:/io --rm ghcr.io/astral-sh/ruff:latest check --fix .

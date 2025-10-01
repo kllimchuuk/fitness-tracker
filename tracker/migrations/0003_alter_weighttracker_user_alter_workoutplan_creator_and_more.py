@@ -2,11 +2,11 @@
 
 import django.db.models.deletion
 from django.conf import settings
-from django.db import migrations, models
+from django.db import migrations
+from django.db import models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("tracker", "0002_remove_user_model"),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
@@ -17,9 +17,7 @@ class Migration(migrations.Migration):
             model_name="weighttracker",
             name="user",
             field=models.ForeignKey(
-                limit_choices_to=models.Q(
-                    ("status", "CUSTOMER"), ("status", "ADMIN"), _connector="OR"
-                ),
+                limit_choices_to=models.Q(("status", "CUSTOMER"), ("status", "ADMIN"), _connector="OR"),
                 on_delete=django.db.models.deletion.CASCADE,
                 to=settings.AUTH_USER_MODEL,
             ),
@@ -28,9 +26,7 @@ class Migration(migrations.Migration):
             model_name="workoutplan",
             name="creator",
             field=models.ForeignKey(
-                limit_choices_to=models.Q(
-                    ("status", "CUSTOMER"), ("status", "ADMIN"), _connector="OR"
-                ),
+                limit_choices_to=models.Q(("status", "CUSTOMER"), ("status", "ADMIN"), _connector="OR"),
                 on_delete=django.db.models.deletion.CASCADE,
                 to=settings.AUTH_USER_MODEL,
             ),
@@ -39,9 +35,7 @@ class Migration(migrations.Migration):
             model_name="workoutsession",
             name="user",
             field=models.ForeignKey(
-                limit_choices_to=models.Q(
-                    ("status", "CUSTOMER"), ("status", "ADMIN"), _connector="OR"
-                ),
+                limit_choices_to=models.Q(("status", "CUSTOMER"), ("status", "ADMIN"), _connector="OR"),
                 on_delete=django.db.models.deletion.CASCADE,
                 to=settings.AUTH_USER_MODEL,
             ),
