@@ -4,9 +4,8 @@ RUN apt-get update && apt-get install -y netcat-openbsd && rm -rf /var/lib/apt/l
 
 WORKDIR /config
 
-COPY requirements.txt .
-COPY requirements-dev.txt .
-RUN pip install --upgrade pip && pip install -r requirements.txt && pip install -r requirements-dev.txt
+COPY pyproject.toml .
+RUN pip install --upgrade pip && pip install .
 
 COPY . .
 

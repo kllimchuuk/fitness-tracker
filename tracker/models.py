@@ -1,6 +1,7 @@
 from django.conf import settings
 from django.db import models
-from django.db.models import ManyToManyField, Q
+from django.db.models import ManyToManyField
+from django.db.models import Q
 
 # Create your models here.
 
@@ -31,9 +32,7 @@ class WorkoutPlan(models.Model):
     version = models.PositiveIntegerField(default=1)
     description = models.TextField()
     exercises: ManyToManyField
-    exercises = models.ManyToManyField(
-        "Exercise", through="ExerciseSet", related_name="workout_plans"
-    )
+    exercises = models.ManyToManyField("Exercise", through="ExerciseSet", related_name="workout_plans")
 
 
 class WorkoutSession(models.Model):
@@ -48,9 +47,7 @@ class WorkoutSession(models.Model):
     )
     plan = models.ForeignKey("WorkoutPlan", on_delete=models.CASCADE)
     duration_minutes = models.PositiveIntegerField()
-    status = models.CharField(
-        max_length=16, choices=Status.choices, default=Status.ACTIVE
-    )
+    status = models.CharField(max_length=16, choices=Status.choices, default=Status.ACTIVE)
     start_time = models.DateTimeField()
 
 

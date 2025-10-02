@@ -3,11 +3,11 @@
 import django.contrib.auth.models
 import django.contrib.auth.validators
 import django.utils.timezone
-from django.db import migrations, models
+from django.db import migrations
+from django.db import models
 
 
 class Migration(migrations.Migration):
-
     initial = True
 
     dependencies = [
@@ -30,9 +30,7 @@ class Migration(migrations.Migration):
                 ("password", models.CharField(max_length=128, verbose_name="password")),
                 (
                     "last_login",
-                    models.DateTimeField(
-                        blank=True, null=True, verbose_name="last login"
-                    ),
+                    models.DateTimeField(blank=True, null=True, verbose_name="last login"),
                 ),
                 (
                     "is_superuser",
@@ -45,29 +43,21 @@ class Migration(migrations.Migration):
                 (
                     "username",
                     models.CharField(
-                        error_messages={
-                            "unique": "A user with that username already exists."
-                        },
+                        error_messages={"unique": "A user with that username already exists."},
                         help_text="Required. 150 characters or fewer. Letters, digits and @/./+/-/_ only.",
                         max_length=150,
                         unique=True,
-                        validators=[
-                            django.contrib.auth.validators.UnicodeUsernameValidator()
-                        ],
+                        validators=[django.contrib.auth.validators.UnicodeUsernameValidator()],
                         verbose_name="username",
                     ),
                 ),
                 (
                     "first_name",
-                    models.CharField(
-                        blank=True, max_length=150, verbose_name="first name"
-                    ),
+                    models.CharField(blank=True, max_length=150, verbose_name="first name"),
                 ),
                 (
                     "last_name",
-                    models.CharField(
-                        blank=True, max_length=150, verbose_name="last name"
-                    ),
+                    models.CharField(blank=True, max_length=150, verbose_name="last name"),
                 ),
                 (
                     "is_staff",
@@ -87,15 +77,11 @@ class Migration(migrations.Migration):
                 ),
                 (
                     "date_joined",
-                    models.DateTimeField(
-                        default=django.utils.timezone.now, verbose_name="date joined"
-                    ),
+                    models.DateTimeField(default=django.utils.timezone.now, verbose_name="date joined"),
                 ),
                 (
                     "email",
-                    models.EmailField(
-                        max_length=254, unique=True, verbose_name="Email"
-                    ),
+                    models.EmailField(max_length=254, unique=True, verbose_name="Email"),
                 ),
                 (
                     "status",
@@ -107,9 +93,7 @@ class Migration(migrations.Migration):
                 ),
                 (
                     "age",
-                    models.PositiveIntegerField(
-                        blank=True, null=True, verbose_name="Вік"
-                    ),
+                    models.PositiveIntegerField(blank=True, null=True, verbose_name="Вік"),
                 ),
                 (
                     "height",
@@ -117,9 +101,7 @@ class Migration(migrations.Migration):
                 ),
                 (
                     "goal",
-                    models.CharField(
-                        blank=True, max_length=256, null=True, verbose_name="Мета"
-                    ),
+                    models.CharField(blank=True, max_length=256, null=True, verbose_name="Мета"),
                 ),
                 (
                     "groups",
