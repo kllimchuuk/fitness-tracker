@@ -15,11 +15,6 @@ pip install pre-commit
 pre-commit install
 ```
 
-### Запуск перевірок вручну
-```bash
-pre-commit run -a
-```
-
 ### Лінтинг і форматування через Docker
 ```bash
 make run-ruff
