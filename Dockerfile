@@ -5,8 +5,8 @@ RUN apt-get update && apt-get install -y netcat-openbsd && rm -rf /var/lib/apt/l
 WORKDIR /config
 
 COPY pyproject.toml .
-COPY README.md .
 RUN pip install --upgrade pip && pip install .
+
 COPY . .
 
 COPY entrypoint.sh /entrypoint.sh

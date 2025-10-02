@@ -1,52 +1,13 @@
 repos:
   - repo: local
     hooks:
-      - id: ruff-format-docker
-        name: "ruff format (docker)"
+      - id: ruff formatter
+        name: Run ruff formatter
         language: system
-        entry: docker
-        args:
-          - run
-          - --pull
-          - always
-          - -v
-          - .:/io
-          - --rm
-          - "ghcr.io/astral-sh/ruff:latest"
-          - format
-          - .
-        pass_filenames: false
+        entry: sh -c "docker run --pull always -v .:/io --rm ghcr.io/astral-sh/ruff:latest format ."
 
-      - id: ruff-check-docker
-        name: "ruff check --fix (docker)"
+      - id: ruff linter
+        name: Run ruff linter
         language: system
-        entry: docker
-        args:
-          - run
-          - --pull
-          - always
-          - -v
-          - .:/io
-          - --rm
-          - "ghcr.io/astral-sh/ruff:latest"
-          - check
-          - --fix
-          - .
-        pass_filenames: false
-
-  - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v5.0.0
-    hooks:
-      - id: trailing-whitespace
-      - id: end-of-file-fixer
-      - id: check-yaml
-      - id: check-added-large-files
-      - id: check-merge-conflict
-      - id: debug-statements
-      - id: check-docstring-first
-
-  - repo: https://github.com/adamchainz/django-upgrade
-    rev: 1.18.0
-    hooks:
-      - id: django-upgrade
-        args: [--target-version, "5.1"]
+        entry: sh -c "docker run --pull always -v .:/io --rm ghcr.io/astral-sh/ruff:latest check --fix ."
+        

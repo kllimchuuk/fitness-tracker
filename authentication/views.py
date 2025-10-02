@@ -228,19 +228,19 @@ def profile_edit_view(request: HttpRequest) -> HttpResponse:
 
     if age:
         try:
-            validate_age(age)
+            user.age = validate_age(age)
         except ValidationError as e:
             return render(request, "profile_edit.html", {"user": user, "error": str(e)})
 
     if height:
         try:
-            validate_height(height)
+            user.height = validate_height(height)
         except ValidationError as e:
             return render(request, "profile_edit.html", {"user": user, "error": str(e)})
 
     if goal:
         try:
-            validate_goal(goal)
+            user.goal = validate_goal(goal)
         except ValidationError as e:
             return render(request, "profile_edit.html", {"user": user, "error": str(e)})
 
