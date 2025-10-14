@@ -1,0 +1,210 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="exercise-detail-container">
+  <div class="exercise-detail-card">
+    <div class="exercise-header">
+      <h2>{{ exercise.name }}</h2>
+      <span class="exercise-type">{{ exercise.type }}</span>
+    </div>
+    
+    <div class="exercise-content">
+      <div class="exercise-description">
+        <h3>Description</h3>
+        <p>{{ exercise.description }}</p>
+      </div>
+      
+      {% if workout_plans %}
+        <div class="related-plans">
+          <h3>Workout Plans Using This Exercise</h3>
+          <div class="plans-list">
+            {% for plan in workout_plans %}
+              <div class="plan-item">
+                <a href="{% url 'workout_plan_detail' plan.id %}">
+                  {{ plan.name }} (v{{ plan.version }})
+                </a>
+                <span class="plan-creator">by {{ plan.creator.email }}</span>
+              </div>
+            {% endfor %}
+          </div>
+        </div>
+      {% endif %}
+    </div>
+    
+    <div class="exercise-actions">
+      <a {% if user_id %}href="{% url 'workout_plan_create' %}?exercise={{ exercise.id }}"{% endif %}
+         class="create-plan-button {% if not user_id %}disabled{% endif %}">
+        {% if user_id %}Create Plan with This Exercise{% else %}Login to Create Plan{% endif %}
+      </a>
+      <a href="{% url 'tracker:exercises_list' %}" class="back-button">Back to Exercises</a>
+    </div>
+  </div>
+</div>
+
+<style>
+.exercise-detail-container {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 0 16px;
+}
+
+.exercise-detail-card {
+  background: #12151a;
+  border: 1px solid #1c2128;
+  border-radius: 10px;
+  padding: 32px;
+}
+
+.exercise-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 24px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #1c2128;
+}
+
+.exercise-header h2 {
+  color: #e8edf2;
+  margin: 0;
+  font-size: 28px;
+}
+
+.exercise-type {
+  background: #3ba9ff;
+  color: white;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.exercise-content {
+  margin-bottom: 32px;
+}
+
+.exercise-content h3 {
+  color: #e8edf2;
+  margin-bottom: 12px;
+  font-size: 18px;
+}
+
+.exercise-description p {
+  color: #9fb0c0;
+  line-height: 1.6;
+  font-size: 16px;
+}
+
+.related-plans {
+  margin-top: 32px;
+  padding-top: 24px;
+  border-top: 1px solid #1c2128;
+}
+
+.plans-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.plan-item {
+  background: #0b0d10;
+  border: 1px solid #1c2128;
+  border-radius: 6px;
+  padding: 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.plan-item a {
+  color: #3ba9ff;
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.plan-item a:hover {
+  text-decoration: underline;
+}
+
+.plan-creator {
+  color: #9fb0c0;
+  font-size: 14px;
+}
+
+.exercise-actions {
+  display: flex;
+  gap: 16px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.create-plan-button {
+  background: #3ba9ff;
+  color: white;
+  text-decoration: none;
+  padding: 12px 24px;
+  border-radius: 6px;
+  font-weight: 600;
+  transition: opacity 0.2s;
+}
+
+.create-plan-button:hover {
+  opacity: 0.9;
+}
+
+.create-plan-button.disabled {
+  background: #6c757d;
+  cursor: not-allowed;
+}
+
+.create-plan-button.disabled:hover {
+  opacity: 1;
+}
+
+.back-button {
+  background: transparent;
+  color: #9fb0c0;
+  text-decoration: none;
+  padding: 12px 24px;
+  border: 1px solid #1c2128;
+  border-radius: 6px;
+  font-weight: 600;
+  transition: all 0.2s;
+}
+
+.back-button:hover {
+  color: #e8edf2;
+  border-color: #3ba9ff;
+}
+
+@media (max-width: 600px) {
+  .exercise-detail-container {
+    padding: 0 8px;
+  }
+  
+  .exercise-detail-card {
+    padding: 20px;
+  }
+  
+  .exercise-header {
+    flex-direction: column;
+    gap: 8px;
+  }
+  
+  .exercise-header h2 {
+    font-size: 24px;
+  }
+  
+  .exercise-actions {
+    flex-direction: column;
+  }
+  
+  .plan-item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+}
+</style>
+{% endblock %}

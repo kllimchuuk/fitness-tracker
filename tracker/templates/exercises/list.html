@@ -1,0 +1,164 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="exercises-container">
+  <div class="exercises-header">
+    <h2>Exercise Library</h2>
+    
+    <div class="search-filters">
+      <form method="get" class="search-form">
+        <input type="text" name="search" placeholder="Search exercises..." 
+               value="{{ search }}" class="search-input">
+        <select name="type" class="filter-select">
+          <option value="">All Types</option>
+          {% for type in types %}
+            <option value="{{ type }}" {% if selected_type == type %}selected{% endif %}>
+              {{ type }}
+            </option>
+          {% endfor %}
+        </select>
+        <button type="submit" class="search-button">Search</button>
+      </form>
+    </div>
+  </div>
+
+  <div class="exercises-grid">
+    {% for exercise in exercises %}
+      <div class="exercise-card">
+        <div class="exercise-header">
+          <h3>{{ exercise.name }}</h3>
+          <span class="exercise-type">{{ exercise.type }}</span>
+        </div>
+        <p class="exercise-description">{{ exercise.description|truncatewords:20 }}</p>
+        <a href="{% url 'tracker:exercise_detail' exercise.id %}" class="view-button">
+          View Details
+        </a>
+      </div>
+    {% empty %}
+      <div class="no-exercises">
+        <p>No exercises found.</p>
+      </div>
+    {% endfor %}
+  </div>
+</div>
+
+<style>
+.exercises-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 16px;
+}
+
+.exercises-header {
+  margin-bottom: 32px;
+}
+
+.exercises-header h2 {
+  color: #e8edf2;
+  margin-bottom: 24px;
+}
+
+.search-form {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.search-input {
+  flex: 1;
+  min-width: 200px;
+  background: #12151a;
+  border: 1px solid #1c2128;
+  border-radius: 6px;
+  padding: 12px;
+  color: #e8edf2;
+}
+
+.filter-select {
+  background: #12151a;
+  border: 1px solid #1c2128;
+  border-radius: 6px;
+  padding: 12px;
+  color: #e8edf2;
+}
+
+.search-button {
+  background: #3ba9ff;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  padding: 12px 24px;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.exercises-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 24px;
+}
+
+.exercise-card {
+  background: #12151a;
+  border: 1px solid #1c2128;
+  border-radius: 10px;
+  padding: 20px;
+  transition: transform 0.2s;
+}
+
+.exercise-card:hover {
+  transform: translateY(-2px);
+}
+
+.exercise-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 12px;
+}
+
+.exercise-header h3 {
+  color: #e8edf2;
+  margin: 0;
+  font-size: 18px;
+}
+
+.exercise-type {
+  background: #3ba9ff;
+  color: white;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.exercise-description {
+  color: #9fb0c0;
+  margin-bottom: 16px;
+  line-height: 1.5;
+}
+
+.view-button {
+  background: #3ba9ff;
+  color: white;
+  text-decoration: none;
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  display: inline-block;
+  transition: opacity 0.2s;
+}
+
+.view-button:hover {
+  opacity: 0.9;
+}
+
+.no-exercises {
+  text-align: center;
+  padding: 48px;
+  color: #9fb0c0;
+}
+</style>
+{% endblock %}
