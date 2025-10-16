@@ -22,6 +22,18 @@
     </div>
   </div>
 
+  {% if user_id %}
+  <form action="{% url 'tracker:exercise_create' %}" method="post" style="margin:16px 0">
+    {% csrf_token %}
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <input name="name" placeholder="Name" class="search-input" required>
+      <input name="type" placeholder="Type" class="search-input" required>
+      <input name="description" placeholder="Description" class="search-input">
+      <button type="submit" class="search-button">Create</button>
+    </div>
+  </form>
+{% endif %}
+
   <div class="exercises-grid">
     {% for exercise in exercises %}
       <div class="exercise-card">

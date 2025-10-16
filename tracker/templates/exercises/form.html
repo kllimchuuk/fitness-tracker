@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="exercise-detail-container">
+  <div class="exercise-detail-card">
+    <h2 style="color:#e8edf2;margin-top:0">
+      {% if mode == "create" %}Create Exercise{% else %}Update Exercise{% endif %}
+    </h2>
+
+    <form method="post" class="search-form" style="margin-top:16px">
+      {% csrf_token %}
+      {{ form.non_field_errors }}
+      <div style="display:flex;gap:12px;flex-wrap:wrap">
+        {{ form.name.errors }}{{ form.name }}
+        {{ form.type.errors }}{{ form.type }}
+        {{ form.description.errors }}{{ form.description }}
+      </div>
+      <div style="margin-top:16px">
+        <button type="submit" class="search-button">
+          {% if mode == "create" %}Create{% else %}Save{% endif %}
+        </button>
+        <a href="{% if mode == 'create' %}{% url 'tracker:exercises_list' %}{% else %}{% url 'tracker:exercise_detail' exercise.id %}{% endif %}"
+           class="back-button" style="margin-left:8px">Cancel</a>
+      </div>
+    </form>
+  </div>
+  </div>
+{% endblock %}
+
+
