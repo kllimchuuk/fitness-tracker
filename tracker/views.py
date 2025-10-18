@@ -2,13 +2,12 @@ import json
 from typing import Any
 
 from django.contrib import messages
-from django.forms.models import model_to_dict
 from django.http import HttpResponseBadRequest
-from django.http import HttpResponseNotAllowed
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
 from django.shortcuts import redirect
 from django.shortcuts import render
+from django.views import View
 from django.views.decorators.http import require_POST
 from django.views.decorators.http import require_http_methods
 from django.views.generic import TemplateView
@@ -16,9 +15,12 @@ from django.views.generic import TemplateView
 from .forms import ExerciseForm
 from .models import Exercise
 from .models import WorkoutPlan
+from .service.exercise import create_exercise
+from .service.exercise import delete_exercise
+from .service.exercise import get_exercise_by_id
+from .service.exercise import update_exercise
 
 
-# Create your views here.
 class IndexView(TemplateView):
     template_name = "index.html"
 
@@ -31,17 +33,13 @@ class IndexView(TemplateView):
 
 def exercises_list(request):
     exercises = Exercise.objects.all()
-
     search = request.GET.get("search", "")
     if search:
         exercises = exercises.filter(name__icontains=search)
-
     exercise_type = request.GET.get("type", "")
     if exercise_type:
         exercises = exercises.filter(type=exercise_type)
-
     types = Exercise.objects.values_list("type", flat=True).distinct()
-
     return render(
         request,
         "exercises/list.html",
@@ -57,25 +55,25 @@ def exercises_list(request):
 
 
 def exercise_detail(request, exercise_id):
-    try:
-        exercise = Exercise.objects.get(id=exercise_id)
-        workout_plans = WorkoutPlan.objects.filter(exercises=exercise)
-        return render(
-            request,
-            "exercises/detail.html",
-            {
-                "exercise": exercise,
-                "workout_plans": workout_plans,
-                "user_id": request.session.get("user_id"),
-                "email": request.session.get("email"),
-            },
-        )
-    except Exercise.DoesNotExist:
-        return render(request, "404.html")
+    exercise = get_object_or_404(Exercise, id=exercise_id)
+    workout_plans = WorkoutPlan.objects.filter(exercises=exercise)
+    return render(
+        request,
+        "exercises/detail.html",
+        {
+            "exercise": exercise,
+            "workout_plans": workout_plans,
+            "user_id": request.session.get("user_id"),
+            "email": request.session.get("email"),
+        },
+    )
 
 
 @require_http_methods(["GET", "POST"])
 def api_exercises(request):
+    if not request.session.get("user_id"):
+        return JsonResponse({"detail": "Authentication required"}, status=401)
+
     if request.method == "GET":
         qs = Exercise.objects.all()
         search = request.GET.get("search", "")
@@ -84,62 +82,64 @@ def api_exercises(request):
         exercise_type = request.GET.get("type", "")
         if exercise_type:
             qs = qs.filter(type=exercise_type)
-        data = [model_to_dict(e) for e in qs]
+        data = [e for e in map(lambda ex: get_exercise_by_id(ex.id), qs) if e]
         return JsonResponse({"results": data}, status=200)
-
-    if not request.session.get("user_id"):
-        return JsonResponse({"detail": "Authentication required"}, status=401)
 
     try:
         payload = json.loads(request.body.decode("utf-8"))
     except json.JSONDecodeError:
         return HttpResponseBadRequest("Invalid JSON")
 
-    name = payload.get("name", "")
-    type_ = payload.get("type")
-    description = payload.get("description", "")
-    if not name or not type_:
-        return HttpResponseBadRequest("Fields 'name' and 'type' are required.")
+    missing_fields = []
+    if "name" not in payload:
+        missing_fields.append("name")
+    if "type" not in payload:
+        missing_fields.append("type")
 
-    exercise = Exercise.objects.create(name=name, type=type_, description=description)
-    return JsonResponse(model_to_dict(exercise), status=201)
+    if missing_fields:
+        return HttpResponseBadRequest(f"Missing required fields: {', '.join(missing_fields)}")
+
+    exercise = create_exercise(payload)
+    return JsonResponse(exercise, status=201)
 
 
-@require_http_methods(["GET", "PUT", "PATCH", "DELETE"])
-def api_exercise_detail(request, exercise_id: int):
-    try:
-        exercise = Exercise.objects.get(id=exercise_id)
-    except Exercise.DoesNotExist:
+class ApiExerciseDetailView(View):
+    def dispatch(self, request, *args, **kwargs):
+        if not request.session.get("user_id"):
+            return JsonResponse({"detail": "Authentication required"}, status=401)
+        return super().dispatch(request, *args, **kwargs)
+
+    def get(self, request, exercise_id):
+        exercise = get_exercise_by_id(exercise_id)
+        if not exercise:
+            return JsonResponse({"detail": "Not found"}, status=404)
+        return JsonResponse(exercise, status=200)
+
+    def put(self, request, exercise_id):
+        return self._update(request, exercise_id, full=True)
+
+    def patch(self, request, exercise_id):
+        return self._update(request, exercise_id, full=False)
+
+    def delete(self, request, exercise_id):
+        if delete_exercise(exercise_id):
+            return JsonResponse({"deleted": True}, status=204)
         return JsonResponse({"detail": "Not found"}, status=404)
 
-    if request.method == "GET":
-        return JsonResponse(model_to_dict(exercise), status=200)
-
-    if not request.session.get("user_id"):
-        return JsonResponse({"detail": "Authentication required"}, status=401)
-
-    if request.method in ["PUT", "PATCH"]:
+    def _update(self, request, exercise_id, full: bool):
         try:
             payload = json.loads(request.body.decode("utf-8"))
         except json.JSONDecodeError:
             return HttpResponseBadRequest("Invalid JSON")
 
-        if request.method == "PUT":
-            for field in ("name", "type"):
-                if field not in payload:
-                    return HttpResponseBadRequest(f"Field '{field}' is required for PUT.")
+        try:
+            updated = update_exercise(exercise_id, payload, full=full)
+        except ValueError as e:
+            return HttpResponseBadRequest(str(e))
 
-        exercise.name = payload.get("name", exercise.name)
-        exercise.type = payload.get("type", exercise.type)
-        exercise.description = payload.get("description", exercise.description)
-        exercise.save()
-        return JsonResponse(model_to_dict(exercise), status=200)
-
-    if request.method == "DELETE":
-        exercise.delete()
-        return JsonResponse({"deleted": True}, status=204)
-
-    return HttpResponseNotAllowed(["GET", "PUT", "PATCH", "DELETE"])
+        if not updated:
+            return JsonResponse({"detail": "Not found"}, status=404)
+        return JsonResponse(updated, status=200)
 
 
 @require_http_methods(["GET", "POST"])
