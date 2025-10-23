@@ -82,7 +82,7 @@ def api_exercises(request):
         exercise_type = request.GET.get("type", "")
         if exercise_type:
             qs = qs.filter(type=exercise_type)
-        data = [e for e in map(lambda ex: get_exercise_by_id(ex.id), qs) if e]
+        data = list(qs.values("id", "name", "type", "description"))
         return JsonResponse({"results": data}, status=200)
 
     try:

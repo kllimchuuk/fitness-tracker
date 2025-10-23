@@ -13,8 +13,14 @@ def get_exercise_by_id(exercise_id: int) -> dict:
 
 
 def create_exercise(payload: dict) -> dict:
-    if "name" not in payload or "type" not in payload:
-        raise ServiceError("Missing required fields: name, type", code=400)
+    missing_fields = []
+    if "name" not in payload:
+        missing_fields.append("name")
+    if "type" not in payload:
+        missing_fields.append("type")
+
+    if missing_fields:
+        raise ServiceError(f"Missing required fields: {', '.join(missing_fields)}", code=400)
 
     exercise = Exercise.objects.create(name=payload["name"], type=payload["type"], description=payload.get("description", ""))
     return model_to_dict(exercise)
@@ -27,9 +33,14 @@ def update_exercise(exercise_id: int, payload: dict, full: bool = False) -> dict
         raise ServiceError(f"Exercise with id {exercise_id} not found", code=404)
 
     if full:
-        missing = [f for f in ("name", "type") if f not in payload]
-        if missing:
-            raise ServiceError(f"Missing required fields: {', '.join(missing)}", code=400)
+        missing_fields = []
+        if "name" not in payload:
+            missing_fields.append("name")
+        if "type" not in payload:
+            missing_fields.append("type")
+
+        if missing_fields:
+            raise ServiceError(f"Missing required fields: {', '.join(missing_fields)}", code=400)
 
     exercise.name = payload.get("name", exercise.name)
     exercise.type = payload.get("type", exercise.type)
