@@ -6,6 +6,10 @@
     <h2>Welcome to Fitness Tracker</h2>
     
     {% if user_id %}
+      <div class="main-info">
+        <a href="{% url 'tracker:exercises_list' %}" class="auth-button">Browse Exercises</a>
+      </div>
+      
       <div class="user-info">
         <p>Welcome back! You are logged in.</p>
         <div class="auth-actions">
