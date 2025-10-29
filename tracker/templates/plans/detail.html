@@ -1,0 +1,222 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="plan-detail-container">
+  <div class="plan-detail-header">
+    <div>
+      <h2>{{ plan.name }} <span class="plan-version">v{{ plan.version }}</span></h2>
+      <p class="plan-meta">{{ plan.description|default:"No description." }}</p>
+    </div>
+
+    <div class="plan-actions">
+      <a href="{% url 'tracker:plans_list' %}" class="secondary-button">← Back to list</a>
+      {% if user_id %}
+        <a href="{% url 'tracker:plan_update' plan.id %}" class="primary-button">Edit</a>
+        <form action="{% url 'tracker:plan_delete' plan.id %}" method="post" style="display:inline">
+          {% csrf_token %}
+          <button type="submit" class="danger-button">Delete</button>
+        </form>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="plan-sets">
+    <div class="plan-sets-header">
+      <h3>Exercises</h3>
+      {% if user_id %}
+        <a href="{% url 'tracker:plan_add_exercise' plan.id %}" class="primary-button add-exercise-btn">+ Add Exercise</a>
+      {% endif %}
+    </div>
+
+    {% if sets %}
+      <table class="sets-table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Exercise</th>
+            <th>Sets</th>
+            <th>Reps</th>
+            <th>Weight</th>
+            {% if user_id %}
+              <th>Actions</th>
+            {% endif %}
+          </tr>
+        </thead>
+        <tbody>
+          {% for s in sets %}
+            <tr>
+              <td>{{ forloop.counter }}</td>
+              <td>
+                <a class="exercise-link" href="{% url 'tracker:exercise_detail' s.exercise.id %}">
+                  {{ s.exercise.name }}
+                </a>
+              </td>
+              <td>{{ s.sets }}</td>
+              <td>{{ s.reps }}</td>
+              <td>{{ s.weight }} kg</td>
+              {% if user_id %}
+                <td>
+                  <form action="{% url 'tracker:exercise_set_delete' s.id %}" method="post" style="display:inline;">
+                    {% csrf_token %}
+                    <button type="submit" class="danger-button small"
+                            onclick="return confirm('Delete this exercise from plan?');">
+                      Delete
+                    </button>
+                  </form>
+                </td>
+              {% endif %}
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <div class="empty-state">No exercises in this plan yet.</div>
+    {% endif %}
+  </div>
+</div>
+
+<style>
+.plan-detail-container {
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 0 16px;
+}
+
+.plan-detail-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.plan-detail-header h2 {
+  color: #e8edf2;
+  margin: 0 0 6px 0;
+}
+
+.plan-version {
+  background: #22314a;
+  color: #9fb0c0;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.plan-meta {
+  color: #9fb0c0;
+  margin: 0;
+}
+
+.plan-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.primary-button,
+.secondary-button,
+.danger-button {
+  text-decoration: none;
+  border: none;
+  border-radius: 6px;
+  padding: 10px 14px;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-block;
+}
+
+.primary-button {
+  background: #3ba9ff;
+  color: #fff;
+}
+
+.primary-button:hover {
+  opacity: 0.9;
+}
+
+.secondary-button {
+  background: transparent;
+  color: #e8edf2;
+  border: 1px solid #1c2128;
+}
+
+.secondary-button:hover {
+  border-color: #3ba9ff;
+}
+
+.danger-button {
+  background: #f25353;
+  color: #fff;
+}
+
+.danger-button:hover {
+  opacity: 0.85;
+}
+
+.danger-button.small {
+  padding: 6px 10px;
+  font-size: 13px;
+}
+
+.plan-sets {
+  margin-top: 20px;
+}
+
+.plan-sets-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.plan-sets h3 {
+  color: #e8edf2;
+  margin: 0;
+}
+
+.add-exercise-btn {
+  font-size: 14px;
+  padding: 8px 12px;
+}
+
+.sets-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: #12151a;
+  border: 1px solid #1c2128;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.sets-table th,
+.sets-table td {
+  padding: 12px;
+  text-align: left;
+  color: #e8edf2;
+  border-bottom: 1px solid #1c2128;
+}
+
+.sets-table thead th {
+  background: #0f1216;
+  color: #9fb0c0;
+  font-weight: 600;
+}
+
+.exercise-link {
+  color: #3ba9ff;
+  text-decoration: none;
+}
+
+.exercise-link:hover {
+  text-decoration: underline;
+}
+
+.empty-state {
+  color: #9fb0c0;
+  padding: 24px 0;
+  text-align: center;
+}
+</style>
+{% endblock %}

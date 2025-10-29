@@ -12,12 +12,17 @@ from django.views import View
 from django.views.generic import TemplateView
 
 from .forms import ExerciseForm
+from .forms import WorkoutPlanForm
 from .models import Exercise
+from .models import ExerciseSet
 from .models import WorkoutPlan
+from .service.exceptions import ServiceError
 from .service.exercise import create_exercise
 from .service.exercise import delete_exercise
 from .service.exercise import get_exercise_by_id
 from .service.exercise import update_exercise
+from .service.exercise_set import add_exercise_set
+from .service.exercise_set import delete_exercise_set
 
 
 class IndexView(TemplateView):
@@ -71,6 +76,143 @@ class ExerciseDetailView(View):
                 "email": request.session.get("email"),
             },
         )
+
+
+class WorkoutPlanCreateView(View):
+    def dispatch(self, request, *args, **kwargs):
+        if not request.session.get("user_id"):
+            return redirect("authentication:login")
+        return super().dispatch(request, *args, **kwargs)
+
+    def get(self, request):
+        form = WorkoutPlanForm()
+        return render(request, "plans/form.html", {"form": form, "mode": "create"})
+
+    def post(self, request):
+        form = WorkoutPlanForm(request.POST)
+        if form.is_valid():
+            plan = form.save(commit=False)
+            plan.creator_id = request.session["user_id"]
+            plan.save()
+            messages.success(request, "Workout plan created.")
+            return redirect("tracker:plans_list")
+        return render(request, "plans/form.html", {"form": form, "mode": "create"})
+
+
+class WorkoutPlanUpdateView(View):
+    def dispatch(self, request, *args, **kwargs):
+        if not request.session.get("user_id"):
+            return redirect("authentication:login")
+        return super().dispatch(request, *args, **kwargs)
+
+    def get(self, request, plan_id: int):
+        plan = get_object_or_404(WorkoutPlan, id=plan_id, creator_id=request.session["user_id"])
+        form = WorkoutPlanForm(instance=plan)
+        return render(
+            request,
+            "plans/form.html",
+            {"form": form, "mode": "update", "plan": plan},
+        )
+
+    def post(self, request, plan_id: int):
+        plan = get_object_or_404(WorkoutPlan, id=plan_id, creator_id=request.session["user_id"])
+        form = WorkoutPlanForm(request.POST, instance=plan)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Workout plan updated.")
+            return redirect("tracker:plan_detail", plan_id=plan.id)
+        return render(
+            request,
+            "plans/form.html",
+            {"form": form, "mode": "update", "plan": plan},
+        )
+
+
+class WorkoutPlanDeleteView(View):
+    def dispatch(self, request, *args, **kwargs):
+        if not request.session.get("user_id"):
+            return redirect("authentication:login")
+        return super().dispatch(request, *args, **kwargs)
+
+    def post(self, request, plan_id: int):
+        plan = get_object_or_404(WorkoutPlan, id=plan_id, creator_id=request.session["user_id"])
+        plan.delete()
+        messages.success(request, "Workout plan deleted.")
+        return redirect("tracker:plans_list")
+
+
+class WorkoutPlanListView(View):
+    def dispatch(self, request, *args, **kwargs):
+        if not request.session.get("user_id"):
+            return redirect("authentication:login")
+        return super().dispatch(request, *args, **kwargs)
+
+    def get(self, request):
+        user_id = request.session.get("user_id")
+        plans = WorkoutPlan.objects.filter(creator_id=user_id).order_by("-id")
+        return render(
+            request,
+            "plans/list.html",
+            {
+                "plans": plans,
+                "user_id": user_id,
+                "email": request.session.get("email"),
+            },
+        )
+
+
+class WorkoutPlanDetailView(View):
+    def dispatch(self, request, *args, **kwargs):
+        if not request.session.get("user_id"):
+            return redirect("authentication:login")
+        return super().dispatch(request, *args, **kwargs)
+
+    def get(self, request, plan_id: int):
+        plan = get_object_or_404(WorkoutPlan, id=plan_id, creator_id=request.session["user_id"])
+        sets_qs = ExerciseSet.objects.select_related("exercise").filter(workout_plan=plan).order_by("id")
+        return render(
+            request,
+            "plans/detail.html",
+            {
+                "plan": plan,
+                "sets": sets_qs,
+                "user_id": request.session.get("user_id"),
+                "email": request.session.get("email"),
+            },
+        )
+
+
+class WorkoutPlanAddExerciseView(View):
+    def dispatch(self, request, *args, **kwargs):
+        if not request.session.get("user_id"):
+            return redirect("authentication:login")
+        return super().dispatch(request, *args, **kwargs)
+
+    def get(self, request, plan_id: int):
+        plan = get_object_or_404(WorkoutPlan, id=plan_id, creator_id=request.session["user_id"])
+        exercises = Exercise.objects.all().order_by("name")
+        return render(request, "plans/add_exercise.html", {"plan": plan, "exercises": exercises})
+
+    def post(self, request, plan_id: int):
+        plan = get_object_or_404(WorkoutPlan, id=plan_id, creator_id=request.session["user_id"])
+        exercise_id = request.POST.get("exercise_id")
+        sets = request.POST.get("sets", 3)
+        reps = request.POST.get("reps", 10)
+        weight = request.POST.get("weight", 0)
+
+        if not exercise_id:
+            messages.error(request, "Please select an exercise.")
+            return redirect("tracker:plan_add_exercise", plan_id=plan.id)
+
+        try:
+            add_exercise_set(
+                plan.id, {"exercise_id": int(exercise_id), "sets": int(sets), "reps": int(reps), "weight": float(weight)}
+            )
+            messages.success(request, "Exercise added successfully!")
+        except Exception as e:
+            messages.error(request, f"Error: {str(e)}")
+
+        return redirect("tracker:plan_detail", plan_id=plan.id)
 
 
 class ApiExerciseListView(View):
@@ -207,3 +349,18 @@ class ExerciseDeleteView(View):
         exercise.delete()
         messages.success(request, "Exercise deleted.")
         return redirect("tracker:exercises_list")
+
+
+class ExerciseSetDeleteView(View):
+    def dispatch(self, request, *args, **kwargs):
+        if not request.session.get("user_id"):
+            return redirect("authentication:login")
+        return super().dispatch(request, *args, **kwargs)
+
+    def post(self, request, es_id: int):
+        try:
+            delete_exercise_set(es_id)
+            messages.success(request, "Exercise removed from plan.")
+        except ServiceError as e:
+            messages.error(request, f"Error: {str(e)}")
+        return redirect(request.META.get("HTTP_REFERER", "tracker:plans_list"))

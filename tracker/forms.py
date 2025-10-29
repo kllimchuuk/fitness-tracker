@@ -1,6 +1,7 @@
 from django import forms
 
 from .models import Exercise
+from .models import WorkoutPlan
 
 
 class ExerciseForm(forms.ModelForm):
@@ -28,4 +29,14 @@ class ExerciseForm(forms.ModelForm):
                     "placeholder": "Description",
                 }
             ),
+        }
+
+
+class WorkoutPlanForm(forms.ModelForm):
+    class Meta:
+        model = WorkoutPlan
+        fields = ["name", "description"]
+        widgets = {
+            "name": forms.TextInput(attrs={"class": "search-input", "placeholder": "Plan name"}),
+            "description": forms.Textarea(attrs={"class": "search-input", "placeholder": "Plan description", "rows": 3}),
         }
