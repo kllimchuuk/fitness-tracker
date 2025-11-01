@@ -205,13 +205,18 @@ class WorkoutPlanAddExerciseView(View):
             return redirect("tracker:plan_add_exercise", plan_id=plan.id)
 
         try:
-            add_exercise_set(
-                plan.id, {"exercise_id": int(exercise_id), "sets": int(sets), "reps": int(reps), "weight": float(weight)}
+            es = add_exercise_set(
+                plan.id,
+                {
+                    "exercise_id": int(exercise_id),
+                    "sets": int(sets),
+                    "reps": int(reps),
+                    "weight": float(weight),
+                },
             )
-            messages.success(request, "Exercise added successfully!")
-        except Exception as e:
-            messages.error(request, f"Error: {str(e)}")
-
+            messages.success(request, f"Exercise '{es.exercise_name}' added successfully!")
+        except ServiceError as e:
+            messages.error(request, f"Error: {e}")
         return redirect("tracker:plan_detail", plan_id=plan.id)
 
 
@@ -239,19 +244,14 @@ class ApiExerciseListView(View):
         try:
             payload = json.loads(request.body.decode("utf-8"))
         except json.JSONDecodeError:
-            return JsonResponse("Invalid JSON")
+            return JsonResponse({"detail": "Invalid JSON"}, status=400)
 
-        missing_fields = []
-        if "name" not in payload:
-            missing_fields.append("name")
-        if "type" not in payload:
-            missing_fields.append("type")
+        try:
+            exercise = create_exercise(payload)
+        except ServiceError as e:
+            return JsonResponse({"detail": str(e)}, status=e.code)
 
-        if missing_fields:
-            return JsonResponse(f"Missing required fields: {', '.join(missing_fields)}")
-
-        exercise = create_exercise(payload)
-        return JsonResponse(exercise, status=201)
+        return JsonResponse(exercise.model_dump(), status=201)
 
 
 class ApiExerciseDetailView(View):
@@ -261,10 +261,11 @@ class ApiExerciseDetailView(View):
         return super().dispatch(request, *args, **kwargs)
 
     def get(self, request: HttpRequest, exercise_id: int) -> JsonResponse:
-        exercise = get_exercise_by_id(exercise_id)
-        if not exercise:
-            return JsonResponse({"detail": "Not found"}, status=404)
-        return JsonResponse(exercise, status=200)
+        try:
+            exercise = get_exercise_by_id(exercise_id)
+        except ServiceError as e:
+            return JsonResponse({"detail": str(e)}, status=e.code)
+        return JsonResponse(exercise.model_dump(), status=200)
 
     def put(self, request: HttpRequest, exercise_id: int) -> JsonResponse:
         return self.update(request, exercise_id, full=True)
@@ -273,24 +274,24 @@ class ApiExerciseDetailView(View):
         return self.update(request, exercise_id, full=False)
 
     def delete(self, request: HttpRequest, exercise_id: int) -> JsonResponse:
-        if delete_exercise(exercise_id):
-            return JsonResponse({"deleted": True}, status=204)
-        return JsonResponse({"detail": "Not found"}, status=404)
+        try:
+            delete_exercise(exercise_id)
+        except ServiceError as e:
+            return JsonResponse({"detail": str(e)}, status=e.code)
+        return JsonResponse({"deleted": True}, status=204)
 
     def update(self, request: HttpRequest, exercise_id: int, full: bool) -> JsonResponse:
         try:
             payload = json.loads(request.body.decode("utf-8"))
         except json.JSONDecodeError:
-            return JsonResponse("Invalid JSON")
+            return JsonResponse({"detail": "Invalid JSON"}, status=400)
 
         try:
             updated = update_exercise(exercise_id, payload, full=full)
-        except ValueError as e:
-            return JsonResponse(str(e))
+        except ServiceError as e:
+            return JsonResponse({"detail": str(e)}, status=e.code)
 
-        if not updated:
-            return JsonResponse({"detail": "Not found"}, status=404)
-        return JsonResponse(updated, status=200)
+        return JsonResponse(updated.model_dump(), status=200)
 
 
 class ExerciseCreateView(View):
@@ -362,5 +363,5 @@ class ExerciseSetDeleteView(View):
             delete_exercise_set(es_id)
             messages.success(request, "Exercise removed from plan.")
         except ServiceError as e:
-            messages.error(request, f"Error: {str(e)}")
+            messages.error(request, f"Error: {e}")
         return redirect(request.META.get("HTTP_REFERER", "tracker:plans_list"))

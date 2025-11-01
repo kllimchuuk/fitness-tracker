@@ -1,18 +1,18 @@
-from django.forms.models import model_to_dict
+from tracker.schemas.exercise_schema import ExerciseSchema
 
 from .exceptions import ServiceError
 from ..models import Exercise
 
 
-def get_exercise_by_id(exercise_id: int) -> dict:
+def get_exercise_by_id(exercise_id: int) -> ExerciseSchema:
     try:
         exercise = Exercise.objects.get(id=exercise_id)
     except Exercise.DoesNotExist:
         raise ServiceError(f"Exercise with id {exercise_id} not found", code=404)
-    return model_to_dict(exercise)
+    return to_schema(exercise)
 
 
-def create_exercise(payload: dict) -> dict:
+def create_exercise(payload: dict) -> ExerciseSchema:
     missing_fields = []
     if "name" not in payload:
         missing_fields.append("name")
@@ -22,11 +22,15 @@ def create_exercise(payload: dict) -> dict:
     if missing_fields:
         raise ServiceError(f"Missing required fields: {', '.join(missing_fields)}", code=400)
 
-    exercise = Exercise.objects.create(name=payload["name"], type=payload["type"], description=payload.get("description", ""))
-    return model_to_dict(exercise)
+    exercise = Exercise.objects.create(
+        name=payload["name"],
+        type=payload["type"],
+        description=payload.get("description", ""),
+    )
+    return to_schema(exercise)
 
 
-def update_exercise(exercise_id: int, payload: dict, full: bool = False) -> dict:
+def update_exercise(exercise_id: int, payload: dict, full: bool = False) -> ExerciseSchema:
     try:
         exercise = Exercise.objects.get(id=exercise_id)
     except Exercise.DoesNotExist:
@@ -46,12 +50,21 @@ def update_exercise(exercise_id: int, payload: dict, full: bool = False) -> dict
     exercise.type = payload.get("type", exercise.type)
     exercise.description = payload.get("description", exercise.description)
     exercise.save()
-    return model_to_dict(exercise)
+    return to_schema(exercise)
 
 
-def delete_exercise(exercise_id: int) -> None:
+def delete_exercise(exercise_id: int):
     try:
         exercise = Exercise.objects.get(id=exercise_id)
     except Exercise.DoesNotExist:
         raise ServiceError(f"Exercise with id {exercise_id} not found", code=404)
     exercise.delete()
+
+
+def to_schema(exercise: Exercise) -> ExerciseSchema:
+    return ExerciseSchema(
+        id=exercise.id,
+        name=exercise.name,
+        type=exercise.type,
+        description=exercise.description,
+    )

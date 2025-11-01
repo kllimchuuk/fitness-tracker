@@ -1,4 +1,4 @@
-from django.forms.models import model_to_dict
+from tracker.schemas.exercise_set_schema import ExerciseSetSchema
 
 from .exceptions import ServiceError
 from ..models import Exercise
@@ -6,23 +6,23 @@ from ..models import ExerciseSet
 from ..models import WorkoutPlan
 
 
-def list_exercise_sets(plan_id: int) -> list[dict]:
+def list_exercise_sets(plan_id: int) -> list[ExerciseSetSchema]:
     sets = ExerciseSet.objects.filter(workout_plan_id=plan_id).select_related("exercise")
 
     return [
-        {
-            "id": es.id,
-            "exercise_id": es.exercise.id,
-            "exercise_name": es.exercise.name,
-            "sets": es.sets,
-            "reps": es.reps,
-            "weight": es.weight,
-        }
+        ExerciseSetSchema(
+            id=es.id,
+            exercise_id=es.exercise.id,
+            exercise_name=es.exercise.name,
+            sets=es.sets,
+            reps=es.reps,
+            weight=es.weight,
+        )
         for es in sets
     ]
 
 
-def add_exercise_set(plan_id: int, payload: dict) -> dict:
+def add_exercise_set(plan_id: int, payload: dict) -> ExerciseSetSchema:
     if "exercise_id" not in payload:
         raise ServiceError("Missing required field: exercise_id", code=400)
 
@@ -45,17 +45,17 @@ def add_exercise_set(plan_id: int, payload: dict) -> dict:
     if not created:
         update_fields(es, payload, ("sets", "reps", "weight"))
 
-    return to_dict(es)
+    return to_schema(es)
 
 
-def update_exercise_set(es_id: int, payload: dict) -> dict:
+def update_exercise_set(es_id: int, payload: dict) -> ExerciseSetSchema:
     try:
         es = ExerciseSet.objects.get(id=es_id)
     except ExerciseSet.DoesNotExist:
         raise ServiceError(f"ExerciseSet with id {es_id} not found", code=404)
 
     update_fields(es, payload, ("sets", "reps", "weight"))
-    return to_dict(es)
+    return to_schema(es)
 
 
 def delete_exercise_set(es_id: int):
@@ -77,5 +77,12 @@ def update_fields(instance, data: dict, fields: tuple[str, ...]):
         instance.save()
 
 
-def to_dict(es: ExerciseSet) -> dict:
-    return model_to_dict(es, fields=["id", "exercise_id", "sets", "reps", "weight"])
+def to_schema(es: ExerciseSet) -> ExerciseSetSchema:
+    return ExerciseSetSchema(
+        id=es.id,
+        exercise_id=es.exercise_id,
+        exercise_name=es.exercise.name,
+        sets=es.sets,
+        reps=es.reps,
+        weight=es.weight,
+    )
