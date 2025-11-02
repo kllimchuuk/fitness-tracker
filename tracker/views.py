@@ -16,6 +16,8 @@ from .forms import WorkoutPlanForm
 from .models import Exercise
 from .models import ExerciseSet
 from .models import WorkoutPlan
+from .service.error_handlers import handle_service_error
+from .service.error_handlers import handle_unexpected_error
 from .service.exceptions import ServiceError
 from .service.exercise import create_exercise
 from .service.exercise import delete_exercise
@@ -227,18 +229,22 @@ class ApiExerciseListView(View):
         return super().dispatch(request, *args, **kwargs)
 
     def get(self, request: HttpRequest) -> JsonResponse:
-        qs = Exercise.objects.all()
+        try:
+            qs = Exercise.objects.all()
 
-        search = request.GET.get("search", "")
-        if search:
-            qs = qs.filter(name__icontains=search)
+            search = request.GET.get("search", "")
+            if search:
+                qs = qs.filter(name__icontains=search)
 
-        exercise_type = request.GET.get("type", "")
-        if exercise_type:
-            qs = qs.filter(type=exercise_type)
+            exercise_type = request.GET.get("type", "")
+            if exercise_type:
+                qs = qs.filter(type=exercise_type)
 
-        data = list(qs.values("id", "name", "type", "description"))
-        return JsonResponse({"results": data}, status=200)
+            data = list(qs.values("id", "name", "type", "description"))
+            return JsonResponse({"results": data}, status=200)
+
+        except Exception as e:
+            return handle_unexpected_error(e, "GET /api/exercises/")
 
     def post(self, request: HttpRequest) -> JsonResponse:
         try:
@@ -248,10 +254,11 @@ class ApiExerciseListView(View):
 
         try:
             exercise = create_exercise(payload)
+            return JsonResponse(exercise.model_dump(), status=201)
         except ServiceError as e:
-            return JsonResponse({"detail": str(e)}, status=e.code)
-
-        return JsonResponse(exercise.model_dump(), status=201)
+            return handle_service_error(e, "Failed to create exercise.", status=e.code)
+        except Exception as e:
+            return handle_unexpected_error(e, "POST /api/exercises/")
 
 
 class ApiExerciseDetailView(View):
@@ -263,9 +270,11 @@ class ApiExerciseDetailView(View):
     def get(self, request: HttpRequest, exercise_id: int) -> JsonResponse:
         try:
             exercise = get_exercise_by_id(exercise_id)
+            return JsonResponse(exercise.model_dump(), status=200)
         except ServiceError as e:
-            return JsonResponse({"detail": str(e)}, status=e.code)
-        return JsonResponse(exercise.model_dump(), status=200)
+            return handle_service_error(e, "Failed to load exercise.", status=e.code)
+        except Exception as e:
+            return handle_unexpected_error(e, f"GET /api/exercises/{exercise_id}")
 
     def put(self, request: HttpRequest, exercise_id: int) -> JsonResponse:
         return self.update(request, exercise_id, full=True)
@@ -276,9 +285,11 @@ class ApiExerciseDetailView(View):
     def delete(self, request: HttpRequest, exercise_id: int) -> JsonResponse:
         try:
             delete_exercise(exercise_id)
+            return JsonResponse({"deleted": True}, status=204)
         except ServiceError as e:
-            return JsonResponse({"detail": str(e)}, status=e.code)
-        return JsonResponse({"deleted": True}, status=204)
+            return handle_service_error(e, "Failed to delete exercise.", status=e.code)
+        except Exception as e:
+            return handle_unexpected_error(e, f"DELETE /api/exercises/{exercise_id}")
 
     def update(self, request: HttpRequest, exercise_id: int, full: bool) -> JsonResponse:
         try:
@@ -288,10 +299,11 @@ class ApiExerciseDetailView(View):
 
         try:
             updated = update_exercise(exercise_id, payload, full=full)
+            return JsonResponse(updated.model_dump(), status=200)
         except ServiceError as e:
-            return JsonResponse({"detail": str(e)}, status=e.code)
-
-        return JsonResponse(updated.model_dump(), status=200)
+            return handle_service_error(e, "Failed to update exercise.", status=e.code)
+        except Exception as e:
+            return handle_unexpected_error(e, f"UPDATE /api/exercises/{exercise_id}")
 
 
 class ExerciseCreateView(View):

@@ -8,18 +8,7 @@ from ..models import WorkoutPlan
 
 def list_exercise_sets(plan_id: int) -> list[ExerciseSetSchema]:
     sets = ExerciseSet.objects.filter(workout_plan_id=plan_id).select_related("exercise")
-
-    return [
-        ExerciseSetSchema(
-            id=es.id,
-            exercise_id=es.exercise.id,
-            exercise_name=es.exercise.name,
-            sets=es.sets,
-            reps=es.reps,
-            weight=es.weight,
-        )
-        for es in sets
-    ]
+    return [ExerciseSetSchema.model_validate(es) for es in sets]
 
 
 def add_exercise_set(plan_id: int, payload: dict) -> ExerciseSetSchema:
@@ -45,7 +34,7 @@ def add_exercise_set(plan_id: int, payload: dict) -> ExerciseSetSchema:
     if not created:
         update_fields(es, payload, ("sets", "reps", "weight"))
 
-    return to_schema(es)
+    return ExerciseSetSchema.model_validate(es)
 
 
 def update_exercise_set(es_id: int, payload: dict) -> ExerciseSetSchema:
@@ -55,7 +44,7 @@ def update_exercise_set(es_id: int, payload: dict) -> ExerciseSetSchema:
         raise ServiceError(f"ExerciseSet with id {es_id} not found", code=404)
 
     update_fields(es, payload, ("sets", "reps", "weight"))
-    return to_schema(es)
+    return ExerciseSetSchema.model_validate(es)
 
 
 def delete_exercise_set(es_id: int):
@@ -63,7 +52,6 @@ def delete_exercise_set(es_id: int):
         es = ExerciseSet.objects.get(id=es_id)
     except ExerciseSet.DoesNotExist:
         raise ServiceError(f"ExerciseSet with id {es_id} not found", code=404)
-
     es.delete()
 
 
@@ -75,14 +63,3 @@ def update_fields(instance, data: dict, fields: tuple[str, ...]):
             changed = True
     if changed:
         instance.save()
-
-
-def to_schema(es: ExerciseSet) -> ExerciseSetSchema:
-    return ExerciseSetSchema(
-        id=es.id,
-        exercise_id=es.exercise_id,
-        exercise_name=es.exercise.name,
-        sets=es.sets,
-        reps=es.reps,
-        weight=es.weight,
-    )

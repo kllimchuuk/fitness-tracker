@@ -9,7 +9,7 @@ def get_exercise_by_id(exercise_id: int) -> ExerciseSchema:
         exercise = Exercise.objects.get(id=exercise_id)
     except Exercise.DoesNotExist:
         raise ServiceError(f"Exercise with id {exercise_id} not found", code=404)
-    return to_schema(exercise)
+    return ExerciseSchema.model_validate(exercise)
 
 
 def create_exercise(payload: dict) -> ExerciseSchema:
@@ -27,7 +27,7 @@ def create_exercise(payload: dict) -> ExerciseSchema:
         type=payload["type"],
         description=payload.get("description", ""),
     )
-    return to_schema(exercise)
+    return ExerciseSchema.model_validate(exercise)
 
 
 def update_exercise(exercise_id: int, payload: dict, full: bool = False) -> ExerciseSchema:
@@ -50,21 +50,12 @@ def update_exercise(exercise_id: int, payload: dict, full: bool = False) -> Exer
     exercise.type = payload.get("type", exercise.type)
     exercise.description = payload.get("description", exercise.description)
     exercise.save()
-    return to_schema(exercise)
+    return ExerciseSchema.model_validate(exercise)
 
 
-def delete_exercise(exercise_id: int):
+def delete_exercise(exercise_id: int) -> None:
     try:
         exercise = Exercise.objects.get(id=exercise_id)
     except Exercise.DoesNotExist:
         raise ServiceError(f"Exercise with id {exercise_id} not found", code=404)
     exercise.delete()
-
-
-def to_schema(exercise: Exercise) -> ExerciseSchema:
-    return ExerciseSchema(
-        id=exercise.id,
-        name=exercise.name,
-        type=exercise.type,
-        description=exercise.description,
-    )

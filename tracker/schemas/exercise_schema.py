@@ -1,4 +1,5 @@
 from pydantic import BaseModel
+from pydantic import ConfigDict
 
 
 class ExerciseSchema(BaseModel):
@@ -6,3 +7,5 @@ class ExerciseSchema(BaseModel):
     name: str
     type: str
     description: str
+
+    model_config = ConfigDict(from_attributes=True)
