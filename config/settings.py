@@ -151,3 +151,35 @@ CSRF_COOKIE_HTTPONLY = os.getenv("CSRF_COOKIE_HTTPONLY", "True").lower() == "tru
 CSRF_COOKIE_SAMESITE = os.getenv("CSRF_COOKIE_SAMESITE", "Strict")
 csrf_trusted_origins_env = os.getenv("CSRF_TRUSTED_ORIGINS")
 CSRF_TRUSTED_ORIGINS = csrf_trusted_origins_env.split(",") if csrf_trusted_origins_env else []
+
+
+LOG_LEVEL = os.getenv("DJANGO_LOG_LEVEL", "DEBUG")
+
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "verbose": {
+            "format": "[{levelname}] {asctime} {name}: {message}",
+            "style": "{",
+        },
+    },
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+            "formatter": "verbose",
+        },
+    },
+    "loggers": {
+        "django": {
+            "handlers": ["console"],
+            "level": LOG_LEVEL,
+            "propagate": True,
+        },
+        "tracker": {
+            "handlers": ["console"],
+            "level": "DEBUG",
+            "propagate": False,
+        },
+    },
+}

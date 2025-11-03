@@ -15,6 +15,23 @@
       </div>
       
       {% if workout_plans %}
+      <div class="related-plans">
+        <h3>Workout Plans Using This Exercise</h3>
+        <div class="plans-list">
+          {% for plan in workout_plans %}
+          <div class="plan-item">
+            <a href="{% url 'tracker:plan_detail' plan.id %}">
+              {{ plan.name }} (v{{ plan.version }})
+            </a>
+            <span class="plan-creator">by {{ plan.creator.email }}</span>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+    </div>
+
+
   <div class="related-plans">
     <h3>Workout Plans Using This Exercise</h3>
     <div class="plans-list">
@@ -26,13 +43,26 @@
       {% endfor %}
     </div>
   </div>
-{% endif %}
     
+
     <div class="exercise-actions">
       <a href="{% url 'tracker:exercises_list' %}" class="back-button">Back to Exercises</a>
     </div>
 
     {% if user_id %}
+    <div style="margin-top:24px;padding-top:16px;border-top:1px solid #1c2128">
+      <h3 style="color:#e8edf2;margin:0 0 12px 0">Manage Exercise</h3>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <a href="{% url 'tracker:exercise_update' exercise.id %}" class="create-plan-button">Edit</a>
+        <form action="{% url 'tracker:exercise_delete' exercise.id %}" method="post" style="display:inline" onsubmit="return confirm('Delete this exercise?')">
+          {% csrf_token %}
+          <button type="submit" class="create-plan-button" style="background:#dc3545">Delete</button>
+        </form>
+      </div>
+    </div>
+    {% endif %}
+  </div>
+</div>
 <div style="margin-top:24px;padding-top:16px;border-top:1px solid #1c2128">
   <h3 style="color:#e8edf2;margin:0 0 12px 0">Manage Exercise</h3>
   <div style="display:flex;gap:8px;flex-wrap:wrap">
@@ -43,7 +73,6 @@
     </form>
   </div>
 </div>
-{% endif %}
 
 <style>
 .exercise-detail-container {
@@ -212,3 +241,4 @@
 }
 </style>
 {% endblock %}
+
