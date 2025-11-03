@@ -1,4 +1,5 @@
 import json
+import logging
 from typing import Any
 
 from django.contrib import messages
@@ -16,8 +17,6 @@ from .forms import WorkoutPlanForm
 from .models import Exercise
 from .models import ExerciseSet
 from .models import WorkoutPlan
-from .service.error_handlers import handle_service_error
-from .service.error_handlers import handle_unexpected_error
 from .service.exceptions import ServiceError
 from .service.exercise import create_exercise
 from .service.exercise import delete_exercise
@@ -25,6 +24,8 @@ from .service.exercise import get_exercise_by_id
 from .service.exercise import update_exercise
 from .service.exercise_set import add_exercise_set
 from .service.exercise_set import delete_exercise_set
+
+logger = logging.getLogger(__name__)
 
 
 class IndexView(TemplateView):
@@ -110,11 +111,7 @@ class WorkoutPlanUpdateView(View):
     def get(self, request, plan_id: int):
         plan = get_object_or_404(WorkoutPlan, id=plan_id, creator_id=request.session["user_id"])
         form = WorkoutPlanForm(instance=plan)
-        return render(
-            request,
-            "plans/form.html",
-            {"form": form, "mode": "update", "plan": plan},
-        )
+        return render(request, "plans/form.html", {"form": form, "mode": "update", "plan": plan})
 
     def post(self, request, plan_id: int):
         plan = get_object_or_404(WorkoutPlan, id=plan_id, creator_id=request.session["user_id"])
@@ -123,11 +120,7 @@ class WorkoutPlanUpdateView(View):
             form.save()
             messages.success(request, "Workout plan updated.")
             return redirect("tracker:plan_detail", plan_id=plan.id)
-        return render(
-            request,
-            "plans/form.html",
-            {"form": form, "mode": "update", "plan": plan},
-        )
+        return render(request, "plans/form.html", {"form": form, "mode": "update", "plan": plan})
 
 
 class WorkoutPlanDeleteView(View):
@@ -155,11 +148,7 @@ class WorkoutPlanListView(View):
         return render(
             request,
             "plans/list.html",
-            {
-                "plans": plans,
-                "user_id": user_id,
-                "email": request.session.get("email"),
-            },
+            {"plans": plans, "user_id": user_id, "email": request.session.get("email")},
         )
 
 
@@ -175,12 +164,7 @@ class WorkoutPlanDetailView(View):
         return render(
             request,
             "plans/detail.html",
-            {
-                "plan": plan,
-                "sets": sets_qs,
-                "user_id": request.session.get("user_id"),
-                "email": request.session.get("email"),
-            },
+            {"plan": plan, "sets": sets_qs, "user_id": request.session.get("user_id"), "email": request.session.get("email")},
         )
 
 
@@ -216,9 +200,12 @@ class WorkoutPlanAddExerciseView(View):
                     "weight": float(weight),
                 },
             )
-            messages.success(request, f"Exercise '{es.exercise_name}' added successfully!")
         except ServiceError as e:
-            messages.error(request, f"Error: {e}")
+            logger.warning(f"Service error adding exercise to plan {plan.id}: {e}")
+            messages.error(request, "Unable to add exercise to plan.")
+            return redirect("tracker:plan_detail", plan_id=plan.id)
+
+        messages.success(request, f"Exercise '{es.exercise_name}' added successfully!")
         return redirect("tracker:plan_detail", plan_id=plan.id)
 
 
@@ -229,22 +216,17 @@ class ApiExerciseListView(View):
         return super().dispatch(request, *args, **kwargs)
 
     def get(self, request: HttpRequest) -> JsonResponse:
-        try:
-            qs = Exercise.objects.all()
+        search = request.GET.get("search", "")
+        exercise_type = request.GET.get("type", "")
 
-            search = request.GET.get("search", "")
-            if search:
-                qs = qs.filter(name__icontains=search)
+        qs = Exercise.objects.all()
+        if search:
+            qs = qs.filter(name__icontains=search)
+        if exercise_type:
+            qs = qs.filter(type=exercise_type)
 
-            exercise_type = request.GET.get("type", "")
-            if exercise_type:
-                qs = qs.filter(type=exercise_type)
-
-            data = list(qs.values("id", "name", "type", "description"))
-            return JsonResponse({"results": data}, status=200)
-
-        except Exception as e:
-            return handle_unexpected_error(e, "GET /api/exercises/")
+        data = list(qs.values("id", "name", "type", "description"))
+        return JsonResponse({"results": data}, status=200)
 
     def post(self, request: HttpRequest) -> JsonResponse:
         try:
@@ -254,11 +236,11 @@ class ApiExerciseListView(View):
 
         try:
             exercise = create_exercise(payload)
-            return JsonResponse(exercise.model_dump(), status=201)
         except ServiceError as e:
-            return handle_service_error(e, "Failed to create exercise.", status=e.code)
-        except Exception as e:
-            return handle_unexpected_error(e, "POST /api/exercises/")
+            logger.warning(f"Service error creating exercise: {e}")
+            return JsonResponse({"detail": "Failed to create exercise."}, status=e.code)
+
+        return JsonResponse(exercise.model_dump(), status=201)
 
 
 class ApiExerciseDetailView(View):
@@ -270,11 +252,11 @@ class ApiExerciseDetailView(View):
     def get(self, request: HttpRequest, exercise_id: int) -> JsonResponse:
         try:
             exercise = get_exercise_by_id(exercise_id)
-            return JsonResponse(exercise.model_dump(), status=200)
         except ServiceError as e:
-            return handle_service_error(e, "Failed to load exercise.", status=e.code)
-        except Exception as e:
-            return handle_unexpected_error(e, f"GET /api/exercises/{exercise_id}")
+            logger.warning(f"Service error loading exercise {exercise_id}: {e}")
+            return JsonResponse({"detail": "Failed to load exercise."}, status=e.code)
+
+        return JsonResponse(exercise.model_dump(), status=200)
 
     def put(self, request: HttpRequest, exercise_id: int) -> JsonResponse:
         return self.update(request, exercise_id, full=True)
@@ -285,11 +267,11 @@ class ApiExerciseDetailView(View):
     def delete(self, request: HttpRequest, exercise_id: int) -> JsonResponse:
         try:
             delete_exercise(exercise_id)
-            return JsonResponse({"deleted": True}, status=204)
         except ServiceError as e:
-            return handle_service_error(e, "Failed to delete exercise.", status=e.code)
-        except Exception as e:
-            return handle_unexpected_error(e, f"DELETE /api/exercises/{exercise_id}")
+            logger.warning(f"Service error deleting exercise {exercise_id}: {e}")
+            return JsonResponse({"detail": "Failed to delete exercise."}, status=e.code)
+
+        return JsonResponse({"deleted": True}, status=204)
 
     def update(self, request: HttpRequest, exercise_id: int, full: bool) -> JsonResponse:
         try:
@@ -299,11 +281,11 @@ class ApiExerciseDetailView(View):
 
         try:
             updated = update_exercise(exercise_id, payload, full=full)
-            return JsonResponse(updated.model_dump(), status=200)
         except ServiceError as e:
-            return handle_service_error(e, "Failed to update exercise.", status=e.code)
-        except Exception as e:
-            return handle_unexpected_error(e, f"UPDATE /api/exercises/{exercise_id}")
+            logger.warning(f"Service error updating exercise {exercise_id}: {e}")
+            return JsonResponse({"detail": "Failed to update exercise."}, status=e.code)
+
+        return JsonResponse(updated.model_dump(), status=200)
 
 
 class ExerciseCreateView(View):
@@ -334,11 +316,7 @@ class ExerciseUpdateView(View):
     def get(self, request: HttpRequest, exercise_id: int) -> HttpResponse:
         exercise = get_object_or_404(Exercise, id=exercise_id)
         form = ExerciseForm(instance=exercise)
-        return render(
-            request,
-            "exercises/form.html",
-            {"form": form, "mode": "update", "exercise": exercise},
-        )
+        return render(request, "exercises/form.html", {"form": form, "mode": "update", "exercise": exercise})
 
     def post(self, request: HttpRequest, exercise_id: int) -> HttpResponse:
         exercise = get_object_or_404(Exercise, id=exercise_id)
@@ -346,12 +324,8 @@ class ExerciseUpdateView(View):
         if form.is_valid():
             form.save()
             messages.success(request, "Exercise updated.")
-            return redirect("tracker:exercise_detail", exercise_id=exercise.id)  # type: ignore[attr-defined]
-        return render(
-            request,
-            "exercises/form.html",
-            {"form": form, "mode": "update", "exercise": exercise},
-        )
+            return redirect("tracker:exercise_detail", exercise_id=exercise.id)
+        return render(request, "exercises/form.html", {"form": form, "mode": "update", "exercise": exercise})
 
 
 class ExerciseDeleteView(View):
@@ -373,7 +347,10 @@ class ExerciseSetDeleteView(View):
     def post(self, request, es_id: int):
         try:
             delete_exercise_set(es_id)
-            messages.success(request, "Exercise removed from plan.")
         except ServiceError as e:
-            messages.error(request, f"Error: {e}")
+            logger.warning(f"Service error deleting exercise set {es_id}: {e}")
+            messages.error(request, "Unable to remove exercise from plan.")
+            return redirect(request.META.get("HTTP_REFERER", "tracker:plans_list"))
+
+        messages.success(request, "Exercise removed from plan.")
         return redirect(request.META.get("HTTP_REFERER", "tracker:plans_list"))
