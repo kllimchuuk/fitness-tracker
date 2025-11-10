@@ -1,3 +1,5 @@
+TODO: add project description
+TODO: translate in english
 # Клонування репозиторія
 Перед запуском проекту скопіюйте .env.example у .env і заповніть свої значення.
 ```bash

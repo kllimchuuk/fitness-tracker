@@ -9,7 +9,11 @@
     </div>
 
     <div class="plan-actions">
-      <a href="{% url 'tracker:plans_list' %}" class="secondary-button">← Back to list</a>
+      {% if from_start_mode %}
+        <a href="{% url 'tracker:plans_list' %}?start=true" class="secondary-button">← Back to list</a>
+      {% else %}
+        <a href="{% url 'tracker:plans_list' %}" class="secondary-button">← Back to list</a>
+      {% endif %}
       {% if user_id %}
         <a href="{% url 'tracker:plan_update' plan.id %}" class="primary-button">Edit</a>
         <form action="{% url 'tracker:plan_delete' plan.id %}" method="post" style="display:inline">
