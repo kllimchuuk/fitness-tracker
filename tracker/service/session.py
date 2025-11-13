@@ -1,26 +1,64 @@
+from django.utils import timezone
+
 from tracker.models import WorkoutPlan
+from tracker.models import WorkoutSession
 from tracker.repository.session_repository import WorkoutSessionRepository
+from tracker.service.exceptions import ServiceError
 
 repo = WorkoutSessionRepository()
 
 
-def get_workout_session_by_id(session_id: int, user_id: int):
-    return repo.get_by_id_and_user(session_id, user_id)
+class WorkoutSessionService:
+    def __init__(self):
+        self.repo = WorkoutSessionRepository()
 
+    def start_session(self, user_id: int, plan_id: int):
+        active_session = self.repo.get_active_by_user(user_id)
+        if active_session:
+            raise ServiceError("You already have an active session.", code=400)
 
-def start_workout_session(user_id: int, plan_id: int):
-    plan = WorkoutPlan.objects.get(id=plan_id, creator_id=user_id)
-    return repo.start_session(user_id, plan)
+        try:
+            plan = WorkoutPlan.objects.get(id=plan_id)
+        except WorkoutPlan.DoesNotExist:
+            raise ServiceError(f"Workout plan {plan_id} not found.", code=404)
 
+        return self.repo.create(
+            user_id=user_id,
+            plan=plan,
+            start_time=timezone.now(),
+            status=WorkoutSession.Status.ACTIVE,
+            duration_minutes=0,
+        )
 
-def finish_workout_session(session_id: int, user_id: int):
-    session = repo.get_by_id_and_user(session_id, user_id)
-    if not session:
-        raise ValueError("Session not found")
-    return repo.finish_session(session)
+    def finish_session(self, session_id: int, user_id: int):
+        session = self.repo.get_by_id_and_user(session_id, user_id)
+        if not session:
+            raise ServiceError("Session not found.", code=404)
 
+        if session.status != WorkoutSession.Status.ACTIVE:
+            raise ServiceError("Only active sessions can be completed.", code=400)
 
-def delete_workout_session(session_id: int, user_id: int):
-    session = repo.get_by_id_and_user(session_id, user_id)
-    if session:
-        repo.delete(session)
+        end_time = timezone.now()
+        duration = int((end_time - session.start_time).total_seconds() // 60)
+
+        return self.repo.update(
+            session,
+            status=WorkoutSession.Status.COMPLETED,
+            duration_minutes=duration,
+        )
+
+    def delete_session(self, session_id: int, user_id: int):
+        session = self.repo.get_by_id_and_user(session_id, user_id)
+        if not session:
+            raise ServiceError("Session not found.", code=404)
+
+        return self.repo.delete(session)
+
+    def get_by_id(self, session_id: int, user_id: int):
+        session = self.repo.get_by_id_and_user(session_id, user_id)
+        if not session:
+            raise ServiceError("Session not found.", code=404)
+        return session
+
+    def get_all_by_user(self, user_id: int):
+        return self.repo.get_all_by_user(user_id)

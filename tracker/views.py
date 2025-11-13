@@ -13,10 +13,7 @@ from django.utils import timezone
 from django.views import View
 from django.views.generic import TemplateView
 
-from tracker.service.session import delete_workout_session
-from tracker.service.session import finish_workout_session
-from tracker.service.session import get_workout_session_by_id
-from tracker.service.session import start_workout_session
+from tracker.service.session import WorkoutSessionService
 
 from .forms import ExerciseForm
 from .forms import WorkoutPlanForm
@@ -33,6 +30,7 @@ from .service.exercise_set import add_exercise_set
 from .service.exercise_set import delete_exercise_set
 
 logger = logging.getLogger(__name__)
+session_service = WorkoutSessionService()
 
 
 class IndexView(TemplateView):
@@ -408,7 +406,7 @@ class WorkoutSessionDetailView(View):
             return redirect("authentication:login")
 
         try:
-            session = get_workout_session_by_id(session_id, user_id)
+            session = session_service.get_by_id(session_id, user_id)
         except ServiceError as e:
             logger.warning(f"Workout session load failed (session_id={session_id}, user_id={user_id}): {e}")
             messages.error(request, "Unable to load workout session.")
@@ -432,10 +430,10 @@ class WorkoutSessionDetailView(View):
         action = request.POST.get("status")
 
         if action == "completed":
-            service_action = finish_workout_session
+            service_action = session_service.finish_session
             success_message = "Workout session completed!"
         elif action == "delete":
-            service_action = delete_workout_session
+            service_action = session_service.delete_session
             success_message = "Workout session deleted!"
         else:
             messages.warning(request, "Unknown action.")
@@ -469,7 +467,7 @@ class WorkoutSessionDetailView(View):
             return JsonResponse({"detail": "Only 'completed' status is supported."}, status=400)
 
         try:
-            session = finish_workout_session(session_id, user_id)
+            session = session_service.finish_session(session_id, user_id)
         except ServiceError as e:
             logger.warning(f"Workout session finish failed (session_id={session_id}, user_id={user_id}): {e}")
             return JsonResponse({"detail": "Unable to complete workout session."}, status=e.code)
@@ -484,7 +482,7 @@ class WorkoutSessionStartView(View):
             return redirect("authentication:login")
 
         try:
-            start_workout_session(user_id, plan_id)
+            session_service.start_session(user_id, plan_id)
         except ServiceError as e:
             logger.warning(f"Workout session start failed (plan_id={plan_id}, user_id={user_id}): {e}")
             messages.error(request, "Unable to start workout session.")
@@ -501,7 +499,7 @@ class WorkoutSessionDeleteView(View):
             return JsonResponse({"detail": "Authentication required"}, status=401)
 
         try:
-            delete_workout_session(session_id, user_id)
+            session_service.delete_session(session_id, user_id)
         except ServiceError as e:
             logger.warning(f"Workout session delete failed (session_id={session_id}, user_id={user_id}): {e}")
             return JsonResponse({"detail": "Unable to delete workout session."}, status=e.code)
