@@ -5,12 +5,10 @@ from tracker.models import WorkoutSession
 from tracker.repository.session_repository import WorkoutSessionRepository
 from tracker.service.exceptions import ServiceError
 
-repo = WorkoutSessionRepository()
-
 
 class WorkoutSessionService:
-    def __init__(self):
-        self.repo = WorkoutSessionRepository()
+    def __init__(self, repo: WorkoutSessionRepository):
+        self.repo = repo
 
     def start_session(self, user_id: int, plan_id: int):
         active_session = self.repo.get_active_by_user(user_id)

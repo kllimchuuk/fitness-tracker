@@ -21,6 +21,7 @@ from .models import Exercise
 from .models import ExerciseSet
 from .models import WorkoutPlan
 from .models import WorkoutSession
+from .repository.session_repository import WorkoutSessionRepository
 from .service.exceptions import ServiceError
 from .service.exercise import create_exercise
 from .service.exercise import delete_exercise
@@ -30,7 +31,8 @@ from .service.exercise_set import add_exercise_set
 from .service.exercise_set import delete_exercise_set
 
 logger = logging.getLogger(__name__)
-session_service = WorkoutSessionService()
+session_repo = WorkoutSessionRepository()
+session_service = WorkoutSessionService(session_repo)
 
 
 class IndexView(TemplateView):
