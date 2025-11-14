@@ -1,0 +1,134 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="session-detail-container">
+  <div class="session-header">
+    <h2>🏋️ Workout Session #{{ session.id }}</h2>
+    <div class="session-actions">
+      <a href="{% url 'tracker:sessions_list' %}" class="secondary-button">← Back to Sessions</a>
+    </div>
+  </div>
+
+  <div class="session-info">
+    <p><strong>Plan ID:</strong> {{ session.plan_id }}</p>
+    <p><strong>Status:</strong>
+      <span class="status-label {% if session.status == 'active' %}active{% else %}completed{% endif %}">
+        {{ session.status|title }}
+      </span>
+    </p>
+    <p><strong>Start Time:</strong> {{ session.start_time|date:"Y-m-d H:i" }}</p>
+    <p><strong>Duration:</strong> {{ session.duration_minutes }} minutes</p>
+  </div>
+
+  <div class="session-footer">
+    {% if session.status == "active" %}
+      <form action="{% url 'tracker:session_detail' session.id %}" method="post" class="finish-form">
+        {% csrf_token %}
+        <input type="hidden" name="status" value="completed">
+        <button type="submit" class="primary-button">Finish Session</button>
+      </form>
+    {% else %}
+      <form action="{% url 'tracker:session_detail' session.id %}" method="post" class="delete-form" onsubmit="return confirm('Delete this session?')">
+        {% csrf_token %}
+        <input type="hidden" name="status" value="delete">
+        <button type="submit" class="danger-button">Delete Session</button>
+      </form>
+    {% endif %}
+  </div>
+</div>
+
+<style>
+.session-detail-container {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 24px 16px;
+  background: #12151a;
+  border: 1px solid #1c2128;
+  border-radius: 10px;
+}
+
+.session-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+.session-header h2 {
+  color: #e8edf2;
+  margin: 0;
+}
+
+.session-info p {
+  color: #9fb0c0;
+  margin: 8px 0;
+  font-size: 15px;
+}
+
+.status-label {
+  padding: 3px 8px;
+  border-radius: 4px;
+  font-weight: 600;
+  text-transform: uppercase;
+  font-size: 13px;
+}
+
+.status-label.active {
+  background: #1e3a8a;
+  color: #3ba9ff;
+}
+
+.status-label.completed {
+  background: #1a3a25;
+  color: #4caf50;
+}
+
+.session-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 24px;
+}
+
+.primary-button,
+.secondary-button,
+.danger-button {
+  border: none;
+  border-radius: 6px;
+  padding: 10px 16px;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: none;
+  display: inline-block;
+  transition: opacity 0.2s;
+}
+
+.primary-button {
+  background: #3ba9ff;
+  color: #fff;
+}
+
+.primary-button:hover {
+  opacity: 0.9;
+}
+
+.secondary-button {
+  background: transparent;
+  color: #e8edf2;
+  border: 1px solid #1c2128;
+}
+
+.secondary-button:hover {
+  border-color: #3ba9ff;
+}
+
+.danger-button {
+  background: #f25353;
+  color: #fff;
+}
+
+.danger-button:hover {
+  opacity: 0.85;
+}
+</style>
+{% endblock %}

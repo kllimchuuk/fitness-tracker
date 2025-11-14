@@ -1,0 +1,215 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="sessions-page">
+  <div class="sessions-header">
+    <h2>🏃 My Workout Sessions</h2>
+
+    {% if user_id %}
+      <a href="{% url 'tracker:plans_list' %}?start=true" class="create-plan-btn">
+        + Start New Session
+      </a>
+    {% endif %}
+  </div>
+
+  {% if sessions %}
+    <div class="sessions-list">
+      {% for session in sessions %}
+        <div class="session-card {% if session.status == 'active' %}active{% else %}completed{% endif %}">
+          <div class="session-info">
+            <div class="session-title">
+              <h3>{{ session.plan.name }}</h3>
+              <span class="session-status">{{ session.status|title }}</span>
+            </div>
+            <p class="session-time">
+              Started: {{ session.start_time|date:"Y-m-d H:i" }}
+            </p>
+            <p class="session-duration">
+              Duration: {{ session.duration_minutes }} min
+            </p>
+          </div>
+
+          <div class="session-footer">
+            <a href="{% url 'tracker:session_detail' session.id %}" class="view-btn">View</a>
+
+            {% if session.status == "active" %}
+              <form method="post" action="{% url 'tracker:session_detail' session.id %}" class="finish-form">
+                {% csrf_token %}
+                <input type="hidden" name="status" value="completed">
+                <button type="submit" class="finish-btn">Finish</button>
+              </form>
+            {% else %}
+              <form method="post" action="{% url 'tracker:session_detail' session.id %}" class="delete-form" onsubmit="return confirm('Delete this session?')">
+                {% csrf_token %}
+                <input type="hidden" name="status" value="delete">
+                <button type="submit" class="delete-btn">Delete</button>
+              </form>
+            {% endif %}
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="empty-state">
+      <p>No workout sessions yet.</p>
+      {% if user_id %}
+        <a href="{% url 'tracker:plans_list' %}?start=true" class="start-session-btn">
+          Start your first session
+        </a>
+      {% endif %}
+    </div>
+  {% endif %}
+</div>
+
+<style>
+.sessions-page {
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 0 16px;
+}
+
+.sessions-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+.sessions-header h2 {
+  color: #e8edf2;
+  margin: 0;
+}
+
+.create-plan-btn,
+.start-session-btn {
+  background: #3ba9ff;
+  color: #fff;
+  text-decoration: none;
+  padding: 10px 16px;
+  border-radius: 6px;
+  font-weight: 600;
+  transition: background 0.2s, transform 0.1s;
+}
+
+.create-plan-btn:hover,
+.start-session-btn:hover {
+  background: #58b7ff;
+  transform: translateY(-1px);
+}
+
+.sessions-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 20px;
+}
+
+.session-card {
+  background: #12151a;
+  border: 1px solid #1c2128;
+  border-radius: 10px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  transition: transform 0.2s, border-color 0.2s;
+}
+
+.session-card.active {
+  border-left: 5px solid #3ba9ff;
+}
+
+.session-card.completed {
+  border-left: 5px solid #4caf50;
+}
+
+.session-card:hover {
+  transform: translateY(-3px);
+  border-color: #3ba9ff;
+}
+
+.session-title {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.session-title h3 {
+  color: #e8edf2;
+  margin: 0;
+}
+
+.session-status {
+  background: #22314a;
+  color: #9fb0c0;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 12px;
+  text-transform: uppercase;
+}
+
+.session-time,
+.session-duration {
+  color: #9fb0c0;
+  margin-top: 8px;
+  font-size: 14px;
+}
+
+.session-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.finish-btn,
+.view-btn,
+.delete-btn {
+  border: none;
+  border-radius: 6px;
+  padding: 8px 14px;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.view-btn {
+  background: #3ba9ff;
+  color: #fff;
+  text-decoration: none;
+}
+
+.view-btn:hover {
+  opacity: 0.9;
+}
+
+.finish-btn {
+  background: #ffa000;
+  color: #fff;
+}
+
+.finish-btn:hover {
+  opacity: 0.9;
+}
+
+.delete-btn {
+  background: #f25353;
+  color: #fff;
+}
+
+.delete-btn:hover {
+  opacity: 0.85;
+}
+
+.empty-state {
+  text-align: center;
+  color: #9fb0c0;
+  margin-top: 60px;
+}
+
+.empty-state p {
+  margin-bottom: 16px;
+  font-size: 16px;
+}
+</style>
+{% endblock %}
