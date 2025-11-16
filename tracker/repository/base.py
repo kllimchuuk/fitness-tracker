@@ -1,4 +1,3 @@
-# tracker/repository/base.py
 from typing import Type
 from typing import TypeVar
 
