@@ -1,9 +1,10 @@
 from tracker.models import WorkoutSession
 
-from .base import BaseRepository
+from .base_repository import BaseRepository
+from .session_repository_interface import AbstractWorkoutSessionRepository
 
 
-class WorkoutSessionRepository(BaseRepository[WorkoutSession]):
+class WorkoutSessionRepository(BaseRepository[WorkoutSession], AbstractWorkoutSessionRepository):
     def __init__(self):
         super().__init__(WorkoutSession)
 

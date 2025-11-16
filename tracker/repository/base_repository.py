@@ -1,24 +1,28 @@
-from abc import ABC
-from abc import abstractmethod
-from typing import Generic
+from typing import Type
 from typing import TypeVar
 
-T = TypeVar("T")
+from django.db import models
+
+from .abstract_repository import AbstractRepository
+
+T = TypeVar("T", bound=models.Model)
 
 
-class AbstractRepository(ABC, Generic[T]):
-    @abstractmethod
+class BaseRepository(AbstractRepository[T]):
+    def __init__(self, model: Type[T]):
+        self.model = model
+
     def create(self, **kwargs) -> T:
-        pass
+        return self.model.objects.create(**kwargs)
 
-    @abstractmethod
     def get(self, **filters) -> T | None:
-        pass
+        return self.model.objects.filter(**filters).first()
 
-    @abstractmethod
     def update(self, instance: T, **fields) -> T:
-        pass
+        for key, value in fields.items():
+            setattr(instance, key, value)
+        instance.save(update_fields=list(fields.keys()))
+        return instance
 
-    @abstractmethod
     def delete(self, instance: T) -> None:
-        pass
+        instance.delete()
