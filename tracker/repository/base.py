@@ -1,15 +1,15 @@
-from typing import Generic
+# tracker/repository/base.py
 from typing import Type
 from typing import TypeVar
 
 from django.db import models
 
+from .base_repository import AbstractRepository
+
 T = TypeVar("T", bound=models.Model)
 
 
-class BaseRepository(Generic[T]):
-    model: Type[T]
-
+class BaseRepository(AbstractRepository[T]):
     def __init__(self, model: Type[T]):
         self.model = model
 
