@@ -13,8 +13,6 @@ from django.utils import timezone
 from django.views import View
 from django.views.generic import TemplateView
 
-from tracker.service.session import WorkoutSessionService
-
 from .forms import ExerciseForm
 from .forms import WorkoutPlanForm
 from .models import Exercise
@@ -29,10 +27,11 @@ from .service.exercise import get_exercise_by_id
 from .service.exercise import update_exercise
 from .service.exercise_set import add_exercise_set
 from .service.exercise_set import delete_exercise_set
+from .service.session_factory import get_session_service
 
 logger = logging.getLogger(__name__)
 session_repo = get_session_repository()
-session_service = WorkoutSessionService(session_repo)
+session_service = get_session_service()
 
 
 class IndexView(TemplateView):

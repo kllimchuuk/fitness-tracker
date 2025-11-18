@@ -2,11 +2,12 @@ from django.utils import timezone
 
 from tracker.models import WorkoutPlan
 from tracker.models import WorkoutSession
-from tracker.repository.session_repository_interface import AbstractWorkoutSessionRepository
+from tracker.repository.session_repository import AbstractWorkoutSessionRepository
 from tracker.service.exceptions import ServiceError
+from tracker.service.session_service import AbstractWorkoutSessionService
 
 
-class WorkoutSessionService:
+class WorkoutSessionService(AbstractWorkoutSessionService):
     def __init__(self, repo: AbstractWorkoutSessionRepository):
         self.repo = repo
 
