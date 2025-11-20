@@ -31,7 +31,7 @@ class AbstractWorkoutSessionService(ABC):
         raise NotImplementedError()
 
 
-class WorkoutSessionService(AbstractWorkoutSessionService, ABC):
+class WorkoutSessionService(AbstractWorkoutSessionService):
     def __init__(self, repo: AbstractWorkoutSessionRepository):
         self.repo = repo
 
