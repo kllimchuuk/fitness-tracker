@@ -1,13 +1,37 @@
+from abc import ABC
+from abc import abstractmethod
+
 from django.utils import timezone
 
 from tracker.models import WorkoutPlan
 from tracker.models import WorkoutSession
 from tracker.repository.session_repository import AbstractWorkoutSessionRepository
 from tracker.service.exceptions import ServiceError
-from tracker.service.session_service import AbstractWorkoutSessionService
 
 
-class WorkoutSessionService(AbstractWorkoutSessionService):
+class AbstractWorkoutSessionService(ABC):
+    @abstractmethod
+    def start_session(self, user_id: int, plan_id: int) -> WorkoutSession:
+        raise NotImplementedError()
+
+    @abstractmethod
+    def finish_session(self, session_id: int, user_id: int) -> WorkoutSession:
+        raise NotImplementedError()
+
+    @abstractmethod
+    def delete_session(self, session_id: int, user_id: int) -> None:
+        raise NotImplementedError()
+
+    @abstractmethod
+    def get_by_id(self, session_id: int, user_id: int) -> WorkoutSession:
+        raise NotImplementedError()
+
+    @abstractmethod
+    def get_all_by_user(self, user_id: int) -> list[WorkoutSession]:
+        raise NotImplementedError()
+
+
+class WorkoutSessionService(AbstractWorkoutSessionService, ABC):
     def __init__(self, repo: AbstractWorkoutSessionRepository):
         self.repo = repo
 

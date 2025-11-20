@@ -10,15 +10,15 @@ from .base_repository import BaseRepository
 class AbstractWorkoutSessionRepository(ABC):
     @abstractmethod
     def get_by_id_and_user(self, session_id: int, user_id: int) -> WorkoutSession | None:
-        pass
+        raise NotImplementedError()
 
     @abstractmethod
     def get_all_by_user(self, user_id: int) -> Sequence[WorkoutSession]:
-        pass
+        raise NotImplementedError()
 
     @abstractmethod
     def get_active_by_user(self, user_id: int) -> WorkoutSession | None:
-        pass
+        raise NotImplementedError()
 
 
 class WorkoutSessionRepository(BaseRepository[WorkoutSession], AbstractWorkoutSessionRepository):
