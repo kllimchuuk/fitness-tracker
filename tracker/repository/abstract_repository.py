@@ -6,7 +6,7 @@ from typing import TypeVar
 T = TypeVar("T")
 
 
-class AbstractRepository(ABC, Generic[T]):
+class CRUDRepository(ABC, Generic[T]):
     @abstractmethod
     def create(self, **kwargs) -> T:
         raise NotImplementedError()

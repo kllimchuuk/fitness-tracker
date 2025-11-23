@@ -35,7 +35,7 @@ class WorkoutSessionService(AbstractWorkoutSessionService):
     def __init__(self, repo: AbstractWorkoutSessionRepository):
         self.repo = repo
 
-    def start_session(self, user_id: int, plan_id: int):
+    def start_session(self, user_id: int, plan_id: int) -> WorkoutSession:
         active_session = self.repo.get_active_by_user(user_id)
         if active_session:
             raise ServiceError("You already have an active session.", code=400)
@@ -53,7 +53,7 @@ class WorkoutSessionService(AbstractWorkoutSessionService):
             duration_minutes=0,
         )
 
-    def finish_session(self, session_id: int, user_id: int):
+    def finish_session(self, session_id: int, user_id: int) -> WorkoutSession:
         session = self.repo.get_by_id_and_user(session_id, user_id)
         if not session:
             raise ServiceError("Session not found.", code=404)
@@ -70,18 +70,18 @@ class WorkoutSessionService(AbstractWorkoutSessionService):
             duration_minutes=duration,
         )
 
-    def delete_session(self, session_id: int, user_id: int):
+    def delete_session(self, session_id: int, user_id: int) -> None:
         session = self.repo.get_by_id_and_user(session_id, user_id)
         if not session:
             raise ServiceError("Session not found.", code=404)
 
         return self.repo.delete(session)
 
-    def get_by_id(self, session_id: int, user_id: int):
+    def get_by_id(self, session_id: int, user_id: int) -> WorkoutSession:
         session = self.repo.get_by_id_and_user(session_id, user_id)
         if not session:
             raise ServiceError("Session not found.", code=404)
         return session
 
-    def get_all_by_user(self, user_id: int):
+    def get_all_by_user(self, user_id: int) -> list[WorkoutSession]:
         return self.repo.get_all_by_user(user_id)

@@ -3,12 +3,12 @@ from typing import TypeVar
 
 from django.db import models
 
-from .abstract_repository import AbstractRepository
+from .abstract_repository import CRUDRepository
 
 T = TypeVar("T", bound=models.Model)
 
 
-class BaseRepository(AbstractRepository[T]):
+class BaseRepository(CRUDRepository[T]):
     def __init__(self, model: Type[T]):
         self.model = model
 
