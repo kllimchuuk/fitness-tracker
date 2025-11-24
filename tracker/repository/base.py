@@ -1,14 +1,33 @@
+from abc import ABC
+from abc import abstractmethod
+from typing import Generic
 from typing import Type
 from typing import TypeVar
 
 from django.db import models
 
-from .abstract_repository import CRUDRepository
-
 T = TypeVar("T", bound=models.Model)
 
 
-class BaseRepository(CRUDRepository[T]):
+class CRUDRepository(ABC, Generic[T]):
+    @abstractmethod
+    def create(self, **kwargs) -> T:
+        raise NotImplementedError()
+
+    @abstractmethod
+    def get(self, **filters) -> T | None:
+        raise NotImplementedError()
+
+    @abstractmethod
+    def update(self, instance: T, **fields) -> T:
+        raise NotImplementedError()
+
+    @abstractmethod
+    def delete(self, instance: T) -> None:
+        raise NotImplementedError()
+
+
+class CRUDRepositorySQLAlchemy(CRUDRepository[T]):
     def __init__(self, model: Type[T]):
         self.model = model
 

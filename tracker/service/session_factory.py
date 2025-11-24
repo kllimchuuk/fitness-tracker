@@ -1,8 +1,8 @@
-from tracker.repository.session_repository_factory import get_session_repository
-from tracker.service.session import AbstractWorkoutSessionService
+from tracker.repository.session_repository import get_session_repository
 from tracker.service.session import WorkoutSessionService
+from tracker.service.session import WorkoutSessionServiceImpl
 
 
-def get_session_service() -> AbstractWorkoutSessionService:
+def get_session_service() -> WorkoutSessionService:
     repo = get_session_repository()
-    return WorkoutSessionService(repo)
+    return WorkoutSessionServiceImpl(repo)

@@ -9,7 +9,7 @@ from tracker.repository.session_repository import AbstractWorkoutSessionReposito
 from tracker.service.exceptions import ServiceError
 
 
-class AbstractWorkoutSessionService(ABC):
+class WorkoutSessionService(ABC):
     @abstractmethod
     def start_session(self, user_id: int, plan_id: int) -> WorkoutSession:
         raise NotImplementedError()
@@ -31,7 +31,7 @@ class AbstractWorkoutSessionService(ABC):
         raise NotImplementedError()
 
 
-class WorkoutSessionService(AbstractWorkoutSessionService):
+class WorkoutSessionServiceImpl(WorkoutSessionService):
     def __init__(self, repo: AbstractWorkoutSessionRepository):
         self.repo = repo
 

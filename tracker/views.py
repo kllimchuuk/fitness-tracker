@@ -19,7 +19,7 @@ from .models import Exercise
 from .models import ExerciseSet
 from .models import WorkoutPlan
 from .models import WorkoutSession
-from .repository.session_repository_factory import get_session_repository
+from .repository.session_repository import get_session_repository
 from .service.exceptions import ServiceError
 from .service.exercise import create_exercise
 from .service.exercise import delete_exercise
