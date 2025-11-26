@@ -19,7 +19,7 @@ from .models import Exercise
 from .models import ExerciseSet
 from .models import WorkoutPlan
 from .models import WorkoutSession
-from .repository.session_repository import get_session_repository
+from .repository.session import get_session_repository
 from .service.exceptions import ServiceError
 from .service.exercise import create_exercise
 from .service.exercise import delete_exercise
@@ -27,7 +27,7 @@ from .service.exercise import get_exercise_by_id
 from .service.exercise import update_exercise
 from .service.exercise_set import add_exercise_set
 from .service.exercise_set import delete_exercise_set
-from .service.session_factory import get_session_service
+from .service.session import get_session_service
 
 logger = logging.getLogger(__name__)
 session_repo = get_session_repository()

@@ -7,7 +7,7 @@ from tracker.models import WorkoutSession
 from .base import CRUDRepositorySQLAlchemy
 
 
-class AbstractWorkoutSessionRepository(ABC):
+class WorkoutSessionRepository(ABC):
     @abstractmethod
     def get_by_id_and_user(self, session_id: int, user_id: int) -> WorkoutSession | None:
         raise NotImplementedError()
@@ -21,7 +21,7 @@ class AbstractWorkoutSessionRepository(ABC):
         raise NotImplementedError()
 
 
-class WorkoutSessionRepository(CRUDRepositorySQLAlchemy[WorkoutSession], AbstractWorkoutSessionRepository):
+class WorkoutSessionRepositoryImpl(CRUDRepositorySQLAlchemy[WorkoutSession], WorkoutSessionRepository):
     def __init__(self):
         super().__init__(WorkoutSession)
 
@@ -35,5 +35,5 @@ class WorkoutSessionRepository(CRUDRepositorySQLAlchemy[WorkoutSession], Abstrac
         return self.model.objects.filter(user_id=user_id, status=WorkoutSession.Status.ACTIVE).first()
 
 
-def get_session_repository() -> AbstractWorkoutSessionRepository:
-    return WorkoutSessionRepository()
+def get_session_repository() -> WorkoutSessionRepository:
+    return WorkoutSessionRepositoryImpl()

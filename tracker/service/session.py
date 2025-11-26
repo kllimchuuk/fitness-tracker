@@ -5,7 +5,8 @@ from django.utils import timezone
 
 from tracker.models import WorkoutPlan
 from tracker.models import WorkoutSession
-from tracker.repository.session_repository import AbstractWorkoutSessionRepository
+from tracker.repository.session import WorkoutSessionRepository
+from tracker.repository.session import get_session_repository
 from tracker.service.exceptions import ServiceError
 
 
@@ -32,7 +33,7 @@ class WorkoutSessionService(ABC):
 
 
 class WorkoutSessionServiceImpl(WorkoutSessionService):
-    def __init__(self, repo: AbstractWorkoutSessionRepository):
+    def __init__(self, repo: WorkoutSessionRepository):
         self.repo = repo
 
     def start_session(self, user_id: int, plan_id: int) -> WorkoutSession:
@@ -85,3 +86,8 @@ class WorkoutSessionServiceImpl(WorkoutSessionService):
 
     def get_all_by_user(self, user_id: int) -> list[WorkoutSession]:
         return self.repo.get_all_by_user(user_id)
+
+
+def get_session_service() -> WorkoutSessionService:
+    repo = get_session_repository()
+    return WorkoutSessionServiceImpl(repo)
