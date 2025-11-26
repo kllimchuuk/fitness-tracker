@@ -9,6 +9,7 @@ from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
 from django.shortcuts import redirect
 from django.shortcuts import render
+from django.utils import timezone
 from django.views import View
 from django.views.generic import TemplateView
 
@@ -17,6 +18,8 @@ from .forms import WorkoutPlanForm
 from .models import Exercise
 from .models import ExerciseSet
 from .models import WorkoutPlan
+from .models import WorkoutSession
+from .repository.session import get_session_repository
 from .service.exceptions import ServiceError
 from .service.exercise import create_exercise
 from .service.exercise import delete_exercise
@@ -24,8 +27,11 @@ from .service.exercise import get_exercise_by_id
 from .service.exercise import update_exercise
 from .service.exercise_set import add_exercise_set
 from .service.exercise_set import delete_exercise_set
+from .service.session import get_session_service
 
 logger = logging.getLogger(__name__)
+session_repo = get_session_repository()
+session_service = get_session_service()
 
 
 class IndexView(TemplateView):
@@ -145,10 +151,18 @@ class WorkoutPlanListView(View):
     def get(self, request):
         user_id = request.session.get("user_id")
         plans = WorkoutPlan.objects.filter(creator_id=user_id).order_by("-id")
+
+        start_mode = request.GET.get("start") == "true"
+
         return render(
             request,
             "plans/list.html",
-            {"plans": plans, "user_id": user_id, "email": request.session.get("email")},
+            {
+                "plans": plans,
+                "user_id": user_id,
+                "email": request.session.get("email"),
+                "start_mode": start_mode,
+            },
         )
 
 
@@ -161,10 +175,19 @@ class WorkoutPlanDetailView(View):
     def get(self, request, plan_id: int):
         plan = get_object_or_404(WorkoutPlan, id=plan_id, creator_id=request.session["user_id"])
         sets_qs = ExerciseSet.objects.select_related("exercise").filter(workout_plan=plan).order_by("id")
+
+        from_start_mode = request.GET.get("start") == "true"
+
         return render(
             request,
             "plans/detail.html",
-            {"plan": plan, "sets": sets_qs, "user_id": request.session.get("user_id"), "email": request.session.get("email")},
+            {
+                "plan": plan,
+                "sets": sets_qs,
+                "user_id": request.session.get("user_id"),
+                "email": request.session.get("email"),
+                "from_start_mode": from_start_mode,
+            },
         )
 
 
@@ -354,3 +377,132 @@ class ExerciseSetDeleteView(View):
 
         messages.success(request, "Exercise removed from plan.")
         return redirect(request.META.get("HTTP_REFERER", "tracker:plans_list"))
+
+
+class WorkoutSessionListView(View):
+    def dispatch(self, request, *args, **kwargs):
+        if not request.session.get("user_id"):
+            return redirect("authentication:login")
+        return super().dispatch(request, *args, **kwargs)
+
+    def get(self, request):
+        user_id = request.session.get("user_id")
+        sessions = WorkoutSession.objects.filter(user_id=user_id).select_related("plan").order_by("-start_time")
+        return render(
+            request,
+            "session/list.html",
+            {
+                "sessions": sessions,
+                "user_id": user_id,
+                "email": request.session.get("email"),
+                "now": timezone.now(),
+            },
+        )
+
+
+class WorkoutSessionDetailView(View):
+    def get(self, request: HttpRequest, session_id: int) -> HttpResponse:
+        user_id = request.session.get("user_id")
+        if not user_id:
+            return redirect("authentication:login")
+
+        try:
+            session = session_service.get_by_id(session_id, user_id)
+        except ServiceError as e:
+            logger.warning(f"Workout session load failed (session_id={session_id}, user_id={user_id}): {e}")
+            messages.error(request, "Unable to load workout session.")
+            return redirect("tracker:sessions_list")
+
+        return render(
+            request,
+            "session/detail.html",
+            {
+                "session": session,
+                "user_id": user_id,
+                "email": request.session.get("email"),
+            },
+        )
+
+    def post(self, request: HttpRequest, session_id: int) -> HttpResponse:
+        user_id = request.session.get("user_id")
+        if not user_id:
+            return redirect("authentication:login")
+
+        action = request.POST.get("status")
+
+        if action == "completed":
+            service_action = session_service.finish_session
+            success_message = "Workout session completed!"
+        elif action == "delete":
+            service_action = session_service.delete_session
+            success_message = "Workout session deleted!"
+        else:
+            messages.warning(request, "Unknown action.")
+            return redirect("tracker:sessions_list")
+
+        try:
+            service_action(session_id, user_id)
+        except ServiceError as e:
+            logger.warning(f"Workout session action failed (session_id={session_id}, user_id={user_id}): {e}")
+            messages.error(request, "Unable to update session.")
+        else:
+            messages.success(request, success_message)
+
+        return redirect("tracker:sessions_list")
+
+    def patch(self, request: HttpRequest, session_id: int) -> JsonResponse:
+        user_id = request.session.get("user_id")
+        if not user_id:
+            return JsonResponse({"detail": "Authentication required"}, status=401)
+
+        try:
+            payload = json.loads(request.body.decode("utf-8"))
+        except json.JSONDecodeError:
+            return JsonResponse({"detail": "Invalid JSON payload"}, status=400)
+
+        new_status = payload.get("status")
+        if not new_status:
+            return JsonResponse({"detail": "Missing 'status' field"}, status=400)
+
+        if new_status != "completed":
+            return JsonResponse({"detail": "Only 'completed' status is supported."}, status=400)
+
+        try:
+            session = session_service.finish_session(session_id, user_id)
+        except ServiceError as e:
+            logger.warning(f"Workout session finish failed (session_id={session_id}, user_id={user_id}): {e}")
+            return JsonResponse({"detail": "Unable to complete workout session."}, status=e.code)
+
+        return JsonResponse(session.model_dump(), status=200)
+
+
+class WorkoutSessionStartView(View):
+    def post(self, request: HttpRequest, plan_id: int) -> HttpResponse:
+        user_id = request.session.get("user_id")
+        if not user_id:
+            return redirect("authentication:login")
+
+        try:
+            session_service.start_session(user_id, plan_id)
+        except ServiceError as e:
+            logger.warning(f"Workout session start failed (plan_id={plan_id}, user_id={user_id}): {e}")
+            messages.error(request, "Unable to start workout session.")
+            return redirect("tracker:sessions_list")
+
+        messages.success(request, "Workout session started successfully!")
+        return redirect("tracker:sessions_list")
+
+
+class WorkoutSessionDeleteView(View):
+    def delete(self, request: HttpRequest, session_id: int) -> JsonResponse:
+        user_id = request.session.get("user_id")
+        if not user_id:
+            return JsonResponse({"detail": "Authentication required"}, status=401)
+
+        try:
+            session_service.delete_session(session_id, user_id)
+        except ServiceError as e:
+            logger.warning(f"Workout session delete failed (session_id={session_id}, user_id={user_id}): {e}")
+            return JsonResponse({"detail": "Unable to delete workout session."}, status=e.code)
+
+        return JsonResponse({"message": "Workout session deleted"}, status=204)
