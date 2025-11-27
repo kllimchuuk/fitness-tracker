@@ -10,6 +10,7 @@
         <a href="{% url 'tracker:exercises_list' %}" class="auth-button"> Exercises</a>
         <a href="{% url 'tracker:plans_list' %}" class="auth-button"> Workout Plans</a>
         <a href="{% url 'tracker:sessions_list' %}" class="auth-button">Sessions</a>
+        <a href="{% url 'tracker:weight_tracker_list' %}" class="auth-button">Weight Tracker</a>
       </div>
       
       <div class="user-info">
@@ -32,14 +33,21 @@
 .welcome-card{background:#12151a;border:1px solid #1c2128;border-radius:10px;padding:32px;width:100%;max-width:500px;text-align:center}
 .welcome-card h2{margin:0 0 16px 0;color:#e8edf2}
 .welcome-card p{color:#9fb0c0;margin:0 0 24px 0;line-height:1.5}
+
+.main-info {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
 .user-info{margin-top:24px;padding-top:24px;border-top:1px solid #1c2128}
 .user-info p{color:#3ba9ff;margin:0 0 16px 0}
 .auth-actions{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
+
 .auth-button{background:#3ba9ff;color:white;border:none;border-radius:6px;padding:12px 24px;font-size:16px;font-weight:600;cursor:pointer;transition:opacity 0.2s;text-decoration:none;display:inline-block}
 .auth-button:hover{opacity:0.9}
 .auth-button.secondary{background:transparent;border:1px solid #3ba9ff;color:#3ba9ff}
 .auth-button.secondary:hover{background:#3ba9ff;color:white}
 </style>
 {% endblock %}
-
-

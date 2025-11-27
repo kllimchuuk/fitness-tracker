@@ -24,4 +24,6 @@ urlpatterns = [
     path("sessions/<int:session_id>/", views.WorkoutSessionDetailView.as_view(), name="session_detail"),
     path("plans/<int:plan_id>/session/start/", views.WorkoutSessionStartView.as_view(), name="session_start"),
     path("sessions/<int:session_id>/delete/", views.WorkoutSessionDeleteView.as_view(), name="session_delete"),
+    path("weight-tracker/", views.WeightTrackerListView.as_view(), name="weight_tracker_list"),
+    path("weight-tracker/<int:weight_tracker_id>/", views.WeightTrackerDetailView.as_view(), name="weight_tracker_detail"),
 ]

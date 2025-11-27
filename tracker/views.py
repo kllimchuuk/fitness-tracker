@@ -28,10 +28,12 @@ from .service.exercise import update_exercise
 from .service.exercise_set import add_exercise_set
 from .service.exercise_set import delete_exercise_set
 from .service.session import get_session_service
+from .service.weight_tracker import get_weight_tracker_service
 
 logger = logging.getLogger(__name__)
 session_repo = get_session_repository()
 session_service = get_session_service()
+weight_tracker_service = get_weight_tracker_service()
 
 
 class IndexView(TemplateView):
@@ -506,3 +508,98 @@ class WorkoutSessionDeleteView(View):
             return JsonResponse({"detail": "Unable to delete workout session."}, status=e.code)
 
         return JsonResponse({"message": "Workout session deleted"}, status=204)
+
+
+class WeightTrackerListView(View):
+    def dispatch(self, request: HttpRequest, *args, **kwargs):
+        if not request.session.get("user_id"):
+            return redirect("authentication:login")
+        return super().dispatch(request, *args, **kwargs)
+
+    def get(self, request: HttpRequest) -> HttpResponse:
+        user_id = request.session["user_id"]
+
+        try:
+            weight_trackers = weight_tracker_service.get_all_by_user(user_id)
+        except ServiceError as e:
+            logger.warning(f"Weight tracker list load failed (user_id={user_id}): {e}")
+            messages.error(request, "Unable to load weight tracker list.")
+            return redirect("tracker:index")
+
+        return render(
+            request,
+            "weight_tracker/list.html",
+            {
+                "weight_trackers": weight_trackers,
+                "user_id": user_id,
+                "email": request.session.get("email"),
+            },
+        )
+
+    def post(self, request: HttpRequest) -> HttpResponse:
+        user_id = request.session["user_id"]
+
+        weight = request.POST.get("weight")
+        entry_date = request.POST.get("date")
+
+        if not weight or not entry_date:
+            messages.error(request, "Both date and weight are required.")
+            return redirect("tracker:weight_tracker_list")
+
+        try:
+            weight_tracker_service.create_weight_tracker(
+                user_id=user_id,
+                weight=weight,
+                entry_date=entry_date,
+            )
+        except ServiceError as e:
+            logger.warning(f"Weight tracker create failed (user_id={user_id}, weight={weight}, date={entry_date}): {e}")
+            messages.error(request, "Unable to add weight entry.")
+            return redirect("tracker:weight_tracker_list")
+
+        messages.success(request, "Weight entry added successfully!")
+        return redirect("tracker:weight_tracker_list")
+
+
+class WeightTrackerDetailView(View):
+    def dispatch(self, request: HttpRequest, *args, **kwargs):
+        if not request.session.get("user_id"):
+            return redirect("authentication:login")
+        return super().dispatch(request, *args, **kwargs)
+
+    def get(self, request: HttpRequest, weight_tracker_id: int) -> HttpResponse:
+        user_id = request.session["user_id"]
+
+        try:
+            wt = weight_tracker_service.get_by_id(weight_tracker_id, user_id)
+        except ServiceError as e:
+            logger.warning(f"Weight tracker load failed (id={weight_tracker_id}, user_id={user_id}): {e}")
+            messages.error(request, "Unable to load weight entry.")
+            return redirect("tracker:weight_tracker_list")
+
+        return render(
+            request,
+            "weight_tracker/detail.html",
+            {
+                "weight": wt,
+                "user_id": user_id,
+                "email": request.session.get("email"),
+            },
+        )
+
+    def post(self, request: HttpRequest, weight_tracker_id: int) -> HttpResponse:
+        user_id = request.session["user_id"]
+
+        if request.POST.get("_method") == "delete":
+            try:
+                weight_tracker_service.delete_weight_tracker(weight_tracker_id, user_id)
+            except ServiceError as e:
+                logger.warning(f"Weight tracker delete failed (id={weight_tracker_id}, user_id={user_id}): {e}")
+                messages.error(request, "Unable to delete weight entry.")
+                return redirect("tracker:weight_tracker_detail", weight_tracker_id=weight_tracker_id)
+
+            messages.success(request, "Weight entry deleted.")
+            return redirect("tracker:weight_tracker_list")
+
+        messages.error(request, "Unknown action.")
+        return redirect("tracker:weight_tracker_detail", weight_tracker_id=weight_tracker_id)
