@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="wt-detail-container">
+  <div class="wt-header">
+    <h2>⚖️ Weight Entry #{{ weight.id }}</h2>
+    <div class="wt-actions">
+      <a href="{% url 'tracker:weight_tracker_list' %}" class="secondary-button">← Back to History</a>
+    </div>
+  </div>
+
+  <div class="wt-info">
+    <p><strong>Date:</strong> {{ weight.date|date:"Y-m-d" }}</p>
+    <p><strong>Weight:</strong> {{ weight.weight }} kg</p>
+  </div>
+
+  <div class="wt-footer">
+    <form action="{% url 'tracker:weight_tracker_detail' weight.id %}" method="post"
+          onsubmit="return confirm('Delete this entry?');">
+      {% csrf_token %}
+      <input type="hidden" name="_method" value="delete">
+      <button type="submit" class="danger-button">Delete Entry</button>
+    </form>
+  </div>
+</div>
+
+<style>
+.wt-detail-container {
+  max-width: 700px;
+  margin: 0 auto;
+  padding: 24px 16px;
+  background: #12151a;
+  border: 1px solid #1c2128;
+  border-radius: 10px;
+}
+
+.wt-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+.wt-header h2 {
+  color: #e8edf2;
+  margin: 0;
+}
+
+.wt-info p {
+  color: #9fb0c0;
+  margin: 10px 0;
+  font-size: 15px;
+}
+
+.wt-footer {
+  margin-top: 28px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.primary-button,
+.secondary-button,
+.danger-button {
+  border: none;
+  border-radius: 6px;
+  padding: 10px 16px;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: none;
+  transition: opacity 0.2s;
+}
+
+.secondary-button {
+  background: transparent;
+  color: #e8edf2;
+  border: 1px solid #1c2128;
+}
+
+.secondary-button:hover {
+  border-color: #3ba9ff;
+}
+
+.danger-button {
+  background: #f25353;
+  color: #fff;
+}
+
+.danger-button:hover {
+  opacity: 0.85;
+}
+</style>
+{% endblock %}
