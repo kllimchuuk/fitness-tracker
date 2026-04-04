@@ -20,6 +20,7 @@ from .models import ExerciseSet
 from .models import WorkoutPlan
 from .models import WorkoutSession
 from .repository.session import get_session_repository
+from .schemas.workout_session_schema import WorkoutSessionSchema
 from .service.exceptions import ServiceError
 from .service.exercise import create_exercise
 from .service.exercise import delete_exercise
@@ -475,7 +476,7 @@ class WorkoutSessionDetailView(View):
             logger.warning(f"Workout session finish failed (session_id={session_id}, user_id={user_id}): {e}")
             return JsonResponse({"detail": "Unable to complete workout session."}, status=e.code)
 
-        return JsonResponse(session.model_dump(), status=200)
+        return JsonResponse(WorkoutSessionSchema.model_validate(session).model_dump(), status=200)
 
 
 class WorkoutSessionStartView(View):
