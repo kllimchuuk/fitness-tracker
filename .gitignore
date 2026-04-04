@@ -293,3 +293,6 @@ staticfiles/
 
 .DS_Store
 
+
+.venv_test
+.env.test
