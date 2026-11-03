@@ -1,0 +1,22 @@
+.git
+.github
+.idea
+.venv
+.mypy_cache
+.pytest_cache
+.ruff_cache
+.coverage
+htmlcov
+__pycache__
+*.pyc
+.DS_Store
+
+# secrets never go into an image
+.env
+.env.*
+!.env.example
+
+# generated at container start by collectstatic
+staticfiles
+
+docs
