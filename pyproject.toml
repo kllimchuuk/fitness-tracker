@@ -50,6 +50,11 @@ exclude_lines = [
 requires = ["setuptools>=69", "wheel"]
 build-backend = "setuptools.build_meta"
 
+# This is an application, not a library: pip installs only the dependencies. Without this line setuptools
+# refuses to build ("Multiple top-level packages discovered in a flat-layout").
+[tool.setuptools]
+py-modules = []
+
 [tool.ruff]
 exclude = [
     ".bzr",
