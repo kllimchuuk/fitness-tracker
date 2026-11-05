@@ -54,8 +54,6 @@ Written honestly so that each item can be closed by a pull request and then remo
 
 - Authentication stores `user_id` in the session by hand instead of using `django.contrib.auth`.
 - Any logged-in user can create, edit and delete exercises in the shared catalog.
-- `DEBUG` is read as a raw string, so `DEBUG=False` in `.env` still enables debug mode.
-- `SECRET_KEY` has no safe failure mode when it is missing.
 - The Docker build copies the whole working directory; there was no `.dockerignore` before this change.
 - A workout session stores only its duration, not what was performed (no per-set results).
 - `Exercise.type` is a free-text field; there are no muscle groups or equipment.

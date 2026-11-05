@@ -13,9 +13,9 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 import os
 from pathlib import Path
 
-from dotenv import load_dotenv
+from config.env import Env
 
-load_dotenv()
+env = Env()
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -25,13 +25,12 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.getenv("SECRET_KEY")
+SECRET_KEY = env.secret_key.get_secret_value()
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.getenv("DEBUG")
+DEBUG = env.debug
 
-allowed_hosts_env = os.getenv("ALLOWED_HOSTS")
-ALLOWED_HOSTS: list[str] = allowed_hosts_env.split(",") if allowed_hosts_env else []
+ALLOWED_HOSTS = env.allowed_hosts
 
 
 # Application definition
@@ -84,11 +83,11 @@ WSGI_APPLICATION = "config.wsgi.application"
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.postgresql",
-        "NAME": os.getenv("DB_NAME"),
-        "USER": os.getenv("DB_USER"),
-        "PASSWORD": os.getenv("DB_PASSWORD"),
-        "HOST": os.getenv("DB_HOST", "localhost"),
-        "PORT": os.getenv("DB_PORT", "5432"),
+        "NAME": env.db_name,
+        "USER": env.db_user,
+        "PASSWORD": env.db_password.get_secret_value(),
+        "HOST": env.db_host,
+        "PORT": env.db_port,
     }
 }
 
@@ -146,14 +145,13 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 AUTH_USER_MODEL = "authentication.User"
 
 # CSRF settings
-CSRF_COOKIE_SECURE = os.getenv("CSRF_COOKIE_SECURE", "False").lower() == "true"
-CSRF_COOKIE_HTTPONLY = os.getenv("CSRF_COOKIE_HTTPONLY", "True").lower() == "true"
-CSRF_COOKIE_SAMESITE = os.getenv("CSRF_COOKIE_SAMESITE", "Strict")
-csrf_trusted_origins_env = os.getenv("CSRF_TRUSTED_ORIGINS")
-CSRF_TRUSTED_ORIGINS = csrf_trusted_origins_env.split(",") if csrf_trusted_origins_env else []
+CSRF_COOKIE_SECURE = env.csrf_cookie_secure
+CSRF_COOKIE_HTTPONLY = env.csrf_cookie_httponly
+CSRF_COOKIE_SAMESITE = env.csrf_cookie_samesite
+CSRF_TRUSTED_ORIGINS = env.csrf_trusted_origins
 
 
-LOG_LEVEL = os.getenv("DJANGO_LOG_LEVEL", "DEBUG")
+LOG_LEVEL = env.django_log_level
 
 LOGGING = {
     "version": 1,

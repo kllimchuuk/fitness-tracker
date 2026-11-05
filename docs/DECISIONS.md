@@ -38,3 +38,15 @@ Each entry: date, decision, why, what changed. Newest at the bottom.
      on the flat layout; the stylesheet existed only in the git-ignored `staticfiles/`, so a fresh clone had no
      styles.
    - *Changed:* `.dockerignore`; `[tool.setuptools] py-modules = []`; `static/css/base.css` is tracked.
+
+## 2026-11-05 — uv and typed settings
+
+8. **Manage dependencies with uv and a committed `uv.lock`; read configuration through `pydantic-settings`.**
+   - *Why:* `pip install .` resolved fresh versions on every build, so CI and the image could differ from a
+     developer's machine. `os.getenv` returned raw strings (`DEBUG=False` was truthy) and silently returned
+     `None` for a missing `SECRET_KEY`.
+   - *Changed:* `config/env.py` declares every variable with a type and fails at start-up when a required one
+     is missing; `python-dotenv` is replaced by the `.env` support of `pydantic-settings`. Test dependencies
+     moved to a `dev` dependency group. The Docker image installs from the lock file into `/opt/venv`, outside
+     the directory docker-compose bind-mounts. CI runs `uv sync --locked`, so a stale lock file fails the build.
+     Minimum Python is now 3.13, matching the image and CI.
