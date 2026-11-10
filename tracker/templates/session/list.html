@@ -5,11 +5,9 @@
   <div class="sessions-header">
     <h2>🏃 My Workout Sessions</h2>
 
-    {% if user_id %}
       <a href="{% url 'tracker:plans_list' %}?start=true" class="create-plan-btn">
         + Start New Session
       </a>
-    {% endif %}
   </div>
 
   {% if sessions %}
@@ -52,11 +50,9 @@
   {% else %}
     <div class="empty-state">
       <p>No workout sessions yet.</p>
-      {% if user_id %}
         <a href="{% url 'tracker:plans_list' %}?start=true" class="start-session-btn">
           Start your first session
         </a>
-      {% endif %}
     </div>
   {% endif %}
 </div>

@@ -14,22 +14,18 @@
       {% else %}
         <a href="{% url 'tracker:plans_list' %}" class="secondary-button">← Back to list</a>
       {% endif %}
-      {% if user_id %}
         <a href="{% url 'tracker:plan_update' plan.id %}" class="primary-button">Edit</a>
         <form action="{% url 'tracker:plan_delete' plan.id %}" method="post" style="display:inline">
           {% csrf_token %}
           <button type="submit" class="danger-button">Delete</button>
         </form>
-      {% endif %}
     </div>
   </div>
 
   <div class="plan-sets">
     <div class="plan-sets-header">
       <h3>Exercises</h3>
-      {% if user_id %}
         <a href="{% url 'tracker:plan_add_exercise' plan.id %}" class="primary-button add-exercise-btn">+ Add Exercise</a>
-      {% endif %}
     </div>
 
     {% if sets %}
@@ -41,9 +37,7 @@
             <th>Sets</th>
             <th>Reps</th>
             <th>Weight</th>
-            {% if user_id %}
               <th>Actions</th>
-            {% endif %}
           </tr>
         </thead>
         <tbody>
@@ -58,7 +52,6 @@
               <td>{{ s.sets }}</td>
               <td>{{ s.reps }}</td>
               <td>{{ s.weight }} kg</td>
-              {% if user_id %}
                 <td>
                   <form action="{% url 'tracker:exercise_set_delete' s.id %}" method="post" style="display:inline;">
                     {% csrf_token %}
@@ -68,7 +61,6 @@
                     </button>
                   </form>
                 </td>
-              {% endif %}
             </tr>
           {% endfor %}
         </tbody>

@@ -97,12 +97,12 @@ class TestExerciseUpdateView:
         assert response.status_code == 302
         assert LOGIN_URL in response["Location"]
 
-    def test_update_get_returns_200(self, auth_client, exercise):
-        response = auth_client.get(self.url(exercise.id))
+    def test_update_get_returns_200(self, staff_client, exercise):
+        response = staff_client.get(self.url(exercise.id))
         assert response.status_code == 200
 
-    def test_update_post_saves_changes(self, auth_client, exercise):
-        auth_client.post(
+    def test_update_post_saves_changes(self, staff_client, exercise):
+        staff_client.post(
             self.url(exercise.id),
             {
                 "name": "Updated Name",
@@ -114,8 +114,8 @@ class TestExerciseUpdateView:
         assert exercise.name == "Updated Name"
         assert exercise.type == "cardio"
 
-    def test_update_post_redirects_to_detail(self, auth_client, exercise):
-        response = auth_client.post(
+    def test_update_post_redirects_to_detail(self, staff_client, exercise):
+        response = staff_client.post(
             self.url(exercise.id),
             {
                 "name": "Updated Name",
@@ -137,12 +137,12 @@ class TestExerciseDeleteView:
         assert response.status_code == 302
         assert LOGIN_URL in response["Location"]
 
-    def test_delete_removes_exercise(self, auth_client, exercise):
+    def test_delete_removes_exercise(self, staff_client, exercise):
         exercise_id = exercise.id
-        auth_client.post(self.url(exercise.id))
+        staff_client.post(self.url(exercise.id))
         assert not Exercise.objects.filter(id=exercise_id).exists()
 
-    def test_delete_redirects_to_list(self, auth_client, exercise):
-        response = auth_client.post(self.url(exercise.id))
+    def test_delete_redirects_to_list(self, staff_client, exercise):
+        response = staff_client.post(self.url(exercise.id))
         assert response.status_code == 302
         assert "/exercises/" in response["Location"]

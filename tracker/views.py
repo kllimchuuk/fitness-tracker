@@ -1,8 +1,11 @@
 import json
 import logging
-from typing import Any
+from http import HTTPStatus
 
 from django.contrib import messages
+from django.contrib.auth.mixins import LoginRequiredMixin
+from django.core.exceptions import PermissionDenied
+from django.http import Http404
 from django.http import HttpRequest
 from django.http import HttpResponse
 from django.http import JsonResponse
@@ -12,6 +15,8 @@ from django.shortcuts import render
 from django.utils import timezone
 from django.views import View
 from django.views.generic import TemplateView
+
+from authentication.mixins import ApiLoginRequiredMixin
 
 from .forms import ExerciseForm
 from .forms import WorkoutPlanForm
@@ -25,6 +30,7 @@ from .service.exceptions import ServiceError
 from .service.exercise import create_exercise
 from .service.exercise import delete_exercise
 from .service.exercise import get_exercise_by_id
+from .service.exercise import get_manageable_exercise
 from .service.exercise import update_exercise
 from .service.exercise_set import add_exercise_set
 from .service.exercise_set import delete_exercise_set
@@ -37,19 +43,24 @@ session_service = get_session_service()
 weight_tracker_service = get_weight_tracker_service()
 
 
+def get_manageable_exercise_or_error(request: HttpRequest, exercise_id: int) -> Exercise:
+    """404 if the exercise is not visible to the user, 403 if visible but not theirs to change."""
+    try:
+        return get_manageable_exercise(exercise_id, request.user)
+    except ServiceError as e:
+        if e.code == HTTPStatus.FORBIDDEN:
+            raise PermissionDenied
+        raise Http404
+
+
 class IndexView(TemplateView):
     template_name = "index.html"
-
-    def get_context_data(self, **kwargs: Any) -> dict[str, Any]:
-        context = super().get_context_data(**kwargs)
-        context["user_id"] = self.request.session.get("user_id")
-        context["email"] = self.request.session.get("email")
-        return context
 
 
 class ExerciseListView(View):
     def get(self, request: HttpRequest) -> HttpResponse:
-        exercises = Exercise.objects.all()
+        visible = Exercise.objects.visible_to(request.user)
+        exercises = visible
         search = request.GET.get("search", "")
         if search:
             exercises = exercises.filter(name__icontains=search)
@@ -58,7 +69,7 @@ class ExerciseListView(View):
         if exercise_type:
             exercises = exercises.filter(type=exercise_type)
 
-        types = Exercise.objects.values_list("type", flat=True).distinct()
+        types = visible.values_list("type", flat=True).distinct()
 
         return render(
             request,
@@ -68,34 +79,29 @@ class ExerciseListView(View):
                 "types": types,
                 "search": search,
                 "selected_type": exercise_type,
-                "user_id": request.session.get("user_id"),
-                "email": request.session.get("email"),
             },
         )
 
 
 class ExerciseDetailView(View):
     def get(self, request: HttpRequest, exercise_id: int) -> HttpResponse:
-        exercise = get_object_or_404(Exercise, id=exercise_id)
-        workout_plans = WorkoutPlan.objects.filter(exercises=exercise)
+        exercise = get_object_or_404(Exercise.objects.visible_to(request.user), id=exercise_id)
+        if request.user.is_authenticated:
+            workout_plans = WorkoutPlan.objects.filter(exercises=exercise, creator=request.user)
+        else:
+            workout_plans = WorkoutPlan.objects.none()
         return render(
             request,
             "exercises/detail.html",
             {
                 "exercise": exercise,
                 "workout_plans": workout_plans,
-                "user_id": request.session.get("user_id"),
-                "email": request.session.get("email"),
+                "can_manage": exercise.can_be_managed_by(request.user),
             },
         )
 
 
-class WorkoutPlanCreateView(View):
-    def dispatch(self, request, *args, **kwargs):
-        if not request.session.get("user_id"):
-            return redirect("authentication:login")
-        return super().dispatch(request, *args, **kwargs)
-
+class WorkoutPlanCreateView(LoginRequiredMixin, View):
     def get(self, request):
         form = WorkoutPlanForm()
         return render(request, "plans/form.html", {"form": form, "mode": "create"})
@@ -104,26 +110,21 @@ class WorkoutPlanCreateView(View):
         form = WorkoutPlanForm(request.POST)
         if form.is_valid():
             plan = form.save(commit=False)
-            plan.creator_id = request.session["user_id"]
+            plan.creator_id = request.user.id
             plan.save()
             messages.success(request, "Workout plan created.")
             return redirect("tracker:plans_list")
         return render(request, "plans/form.html", {"form": form, "mode": "create"})
 
 
-class WorkoutPlanUpdateView(View):
-    def dispatch(self, request, *args, **kwargs):
-        if not request.session.get("user_id"):
-            return redirect("authentication:login")
-        return super().dispatch(request, *args, **kwargs)
-
+class WorkoutPlanUpdateView(LoginRequiredMixin, View):
     def get(self, request, plan_id: int):
-        plan = get_object_or_404(WorkoutPlan, id=plan_id, creator_id=request.session["user_id"])
+        plan = get_object_or_404(WorkoutPlan, id=plan_id, creator_id=request.user.id)
         form = WorkoutPlanForm(instance=plan)
         return render(request, "plans/form.html", {"form": form, "mode": "update", "plan": plan})
 
     def post(self, request, plan_id: int):
-        plan = get_object_or_404(WorkoutPlan, id=plan_id, creator_id=request.session["user_id"])
+        plan = get_object_or_404(WorkoutPlan, id=plan_id, creator_id=request.user.id)
         form = WorkoutPlanForm(request.POST, instance=plan)
         if form.is_valid():
             form.save()
@@ -132,27 +133,17 @@ class WorkoutPlanUpdateView(View):
         return render(request, "plans/form.html", {"form": form, "mode": "update", "plan": plan})
 
 
-class WorkoutPlanDeleteView(View):
-    def dispatch(self, request, *args, **kwargs):
-        if not request.session.get("user_id"):
-            return redirect("authentication:login")
-        return super().dispatch(request, *args, **kwargs)
-
+class WorkoutPlanDeleteView(LoginRequiredMixin, View):
     def post(self, request, plan_id: int):
-        plan = get_object_or_404(WorkoutPlan, id=plan_id, creator_id=request.session["user_id"])
+        plan = get_object_or_404(WorkoutPlan, id=plan_id, creator_id=request.user.id)
         plan.delete()
         messages.success(request, "Workout plan deleted.")
         return redirect("tracker:plans_list")
 
 
-class WorkoutPlanListView(View):
-    def dispatch(self, request, *args, **kwargs):
-        if not request.session.get("user_id"):
-            return redirect("authentication:login")
-        return super().dispatch(request, *args, **kwargs)
-
+class WorkoutPlanListView(LoginRequiredMixin, View):
     def get(self, request):
-        user_id = request.session.get("user_id")
+        user_id = request.user.id
         plans = WorkoutPlan.objects.filter(creator_id=user_id).order_by("-id")
 
         start_mode = request.GET.get("start") == "true"
@@ -162,21 +153,14 @@ class WorkoutPlanListView(View):
             "plans/list.html",
             {
                 "plans": plans,
-                "user_id": user_id,
-                "email": request.session.get("email"),
                 "start_mode": start_mode,
             },
         )
 
 
-class WorkoutPlanDetailView(View):
-    def dispatch(self, request, *args, **kwargs):
-        if not request.session.get("user_id"):
-            return redirect("authentication:login")
-        return super().dispatch(request, *args, **kwargs)
-
+class WorkoutPlanDetailView(LoginRequiredMixin, View):
     def get(self, request, plan_id: int):
-        plan = get_object_or_404(WorkoutPlan, id=plan_id, creator_id=request.session["user_id"])
+        plan = get_object_or_404(WorkoutPlan, id=plan_id, creator_id=request.user.id)
         sets_qs = ExerciseSet.objects.select_related("exercise").filter(workout_plan=plan).order_by("id")
 
         from_start_mode = request.GET.get("start") == "true"
@@ -187,26 +171,19 @@ class WorkoutPlanDetailView(View):
             {
                 "plan": plan,
                 "sets": sets_qs,
-                "user_id": request.session.get("user_id"),
-                "email": request.session.get("email"),
                 "from_start_mode": from_start_mode,
             },
         )
 
 
-class WorkoutPlanAddExerciseView(View):
-    def dispatch(self, request, *args, **kwargs):
-        if not request.session.get("user_id"):
-            return redirect("authentication:login")
-        return super().dispatch(request, *args, **kwargs)
-
+class WorkoutPlanAddExerciseView(LoginRequiredMixin, View):
     def get(self, request, plan_id: int):
-        plan = get_object_or_404(WorkoutPlan, id=plan_id, creator_id=request.session["user_id"])
-        exercises = Exercise.objects.all().order_by("name")
+        plan = get_object_or_404(WorkoutPlan, id=plan_id, creator_id=request.user.id)
+        exercises = Exercise.objects.visible_to(request.user).order_by("name")
         return render(request, "plans/add_exercise.html", {"plan": plan, "exercises": exercises})
 
     def post(self, request, plan_id: int):
-        plan = get_object_or_404(WorkoutPlan, id=plan_id, creator_id=request.session["user_id"])
+        plan = get_object_or_404(WorkoutPlan, id=plan_id, creator_id=request.user.id)
         exercise_id = request.POST.get("exercise_id")
         sets = request.POST.get("sets", 3)
         reps = request.POST.get("reps", 10)
@@ -225,6 +202,7 @@ class WorkoutPlanAddExerciseView(View):
                     "reps": int(reps),
                     "weight": float(weight),
                 },
+                request.user,
             )
         except ServiceError as e:
             logger.warning(f"Service error adding exercise to plan {plan.id}: {e}")
@@ -235,17 +213,12 @@ class WorkoutPlanAddExerciseView(View):
         return redirect("tracker:plan_detail", plan_id=plan.id)
 
 
-class ApiExerciseListView(View):
-    def dispatch(self, request: HttpRequest, *args, **kwargs):
-        if not request.session.get("user_id"):
-            return JsonResponse({"detail": "Authentication required"}, status=401)
-        return super().dispatch(request, *args, **kwargs)
-
+class ApiExerciseListView(ApiLoginRequiredMixin, View):
     def get(self, request: HttpRequest) -> JsonResponse:
         search = request.GET.get("search", "")
         exercise_type = request.GET.get("type", "")
 
-        qs = Exercise.objects.all()
+        qs = Exercise.objects.visible_to(request.user)
         if search:
             qs = qs.filter(name__icontains=search)
         if exercise_type:
@@ -261,7 +234,7 @@ class ApiExerciseListView(View):
             return JsonResponse({"detail": "Invalid JSON"}, status=400)
 
         try:
-            exercise = create_exercise(payload)
+            exercise = create_exercise(payload, request.user)
         except ServiceError as e:
             logger.warning(f"Service error creating exercise: {e}")
             return JsonResponse({"detail": "Failed to create exercise."}, status=e.code)
@@ -269,15 +242,10 @@ class ApiExerciseListView(View):
         return JsonResponse(exercise.model_dump(), status=201)
 
 
-class ApiExerciseDetailView(View):
-    def dispatch(self, request, *args, **kwargs):
-        if not request.session.get("user_id"):
-            return JsonResponse({"detail": "Authentication required"}, status=401)
-        return super().dispatch(request, *args, **kwargs)
-
+class ApiExerciseDetailView(ApiLoginRequiredMixin, View):
     def get(self, request: HttpRequest, exercise_id: int) -> JsonResponse:
         try:
-            exercise = get_exercise_by_id(exercise_id)
+            exercise = get_exercise_by_id(exercise_id, request.user)
         except ServiceError as e:
             logger.warning(f"Service error loading exercise {exercise_id}: {e}")
             return JsonResponse({"detail": "Failed to load exercise."}, status=e.code)
@@ -292,7 +260,7 @@ class ApiExerciseDetailView(View):
 
     def delete(self, request: HttpRequest, exercise_id: int) -> JsonResponse:
         try:
-            delete_exercise(exercise_id)
+            delete_exercise(exercise_id, request.user)
         except ServiceError as e:
             logger.warning(f"Service error deleting exercise {exercise_id}: {e}")
             return JsonResponse({"detail": "Failed to delete exercise."}, status=e.code)
@@ -306,7 +274,7 @@ class ApiExerciseDetailView(View):
             return JsonResponse({"detail": "Invalid JSON"}, status=400)
 
         try:
-            updated = update_exercise(exercise_id, payload, full=full)
+            updated = update_exercise(exercise_id, payload, request.user, full=full)
         except ServiceError as e:
             logger.warning(f"Service error updating exercise {exercise_id}: {e}")
             return JsonResponse({"detail": "Failed to update exercise."}, status=e.code)
@@ -314,12 +282,7 @@ class ApiExerciseDetailView(View):
         return JsonResponse(updated.model_dump(), status=200)
 
 
-class ExerciseCreateView(View):
-    def dispatch(self, request, *args, **kwargs):
-        if not request.session.get("user_id"):
-            return redirect("authentication:login")
-        return super().dispatch(request, *args, **kwargs)
-
+class ExerciseCreateView(LoginRequiredMixin, View):
     def get(self, request: HttpRequest) -> HttpResponse:
         form = ExerciseForm()
         return render(request, "exercises/form.html", {"form": form, "mode": "create"})
@@ -327,25 +290,25 @@ class ExerciseCreateView(View):
     def post(self, request: HttpRequest) -> HttpResponse:
         form = ExerciseForm(request.POST)
         if form.is_valid():
-            form.save()
+            exercise = form.save(commit=False)
+            exercise.owner = Exercise.owner_for(request.user)
+            exercise.save()
             messages.success(request, "Exercise created.")
             return redirect("tracker:exercises_list")
         return render(request, "exercises/form.html", {"form": form, "mode": "create"})
 
 
-class ExerciseUpdateView(View):
-    def dispatch(self, request, *args, **kwargs):
-        if not request.session.get("user_id"):
-            return redirect("authentication:login")
-        return super().dispatch(request, *args, **kwargs)
+class ExerciseUpdateView(LoginRequiredMixin, View):
+    def get_exercise(self, request: HttpRequest, exercise_id: int) -> Exercise:
+        return get_manageable_exercise_or_error(request, exercise_id)
 
     def get(self, request: HttpRequest, exercise_id: int) -> HttpResponse:
-        exercise = get_object_or_404(Exercise, id=exercise_id)
+        exercise = self.get_exercise(request, exercise_id)
         form = ExerciseForm(instance=exercise)
         return render(request, "exercises/form.html", {"form": form, "mode": "update", "exercise": exercise})
 
     def post(self, request: HttpRequest, exercise_id: int) -> HttpResponse:
-        exercise = get_object_or_404(Exercise, id=exercise_id)
+        exercise = self.get_exercise(request, exercise_id)
         form = ExerciseForm(request.POST, instance=exercise)
         if form.is_valid():
             form.save()
@@ -354,25 +317,25 @@ class ExerciseUpdateView(View):
         return render(request, "exercises/form.html", {"form": form, "mode": "update", "exercise": exercise})
 
 
-class ExerciseDeleteView(View):
+class ExerciseDeleteView(LoginRequiredMixin, View):
     def post(self, request: HttpRequest, exercise_id: int) -> HttpResponse:
-        if not request.session.get("user_id"):
-            return redirect("authentication:login")
-        exercise = get_object_or_404(Exercise, id=exercise_id)
-        exercise.delete()
+        try:
+            delete_exercise(exercise_id, request.user)
+        except ServiceError as e:
+            if e.code == HTTPStatus.FORBIDDEN:
+                raise PermissionDenied
+            if e.code == HTTPStatus.CONFLICT:
+                messages.error(request, f"Cannot delete: {e}.")
+                return redirect("tracker:exercise_detail", exercise_id=exercise_id)
+            raise Http404
         messages.success(request, "Exercise deleted.")
         return redirect("tracker:exercises_list")
 
 
-class ExerciseSetDeleteView(View):
-    def dispatch(self, request, *args, **kwargs):
-        if not request.session.get("user_id"):
-            return redirect("authentication:login")
-        return super().dispatch(request, *args, **kwargs)
-
+class ExerciseSetDeleteView(LoginRequiredMixin, View):
     def post(self, request, es_id: int):
         try:
-            delete_exercise_set(es_id)
+            delete_exercise_set(es_id, request.user)
         except ServiceError as e:
             logger.warning(f"Service error deleting exercise set {es_id}: {e}")
             messages.error(request, "Unable to remove exercise from plan.")
@@ -382,32 +345,28 @@ class ExerciseSetDeleteView(View):
         return redirect(request.META.get("HTTP_REFERER", "tracker:plans_list"))
 
 
-class WorkoutSessionListView(View):
-    def dispatch(self, request, *args, **kwargs):
-        if not request.session.get("user_id"):
-            return redirect("authentication:login")
-        return super().dispatch(request, *args, **kwargs)
-
+class WorkoutSessionListView(LoginRequiredMixin, View):
     def get(self, request):
-        user_id = request.session.get("user_id")
+        user_id = request.user.id
         sessions = WorkoutSession.objects.filter(user_id=user_id).select_related("plan").order_by("-start_time")
         return render(
             request,
             "session/list.html",
             {
                 "sessions": sessions,
-                "user_id": user_id,
-                "email": request.session.get("email"),
                 "now": timezone.now(),
             },
         )
 
 
-class WorkoutSessionDetailView(View):
+class WorkoutSessionDetailView(LoginRequiredMixin, View):
+    def handle_no_permission(self):
+        if self.request.method == "PATCH":
+            return JsonResponse({"detail": "Authentication required"}, status=401)
+        return super().handle_no_permission()
+
     def get(self, request: HttpRequest, session_id: int) -> HttpResponse:
-        user_id = request.session.get("user_id")
-        if not user_id:
-            return redirect("authentication:login")
+        user_id = request.user.id
 
         try:
             session = session_service.get_by_id(session_id, user_id)
@@ -421,15 +380,11 @@ class WorkoutSessionDetailView(View):
             "session/detail.html",
             {
                 "session": session,
-                "user_id": user_id,
-                "email": request.session.get("email"),
             },
         )
 
     def post(self, request: HttpRequest, session_id: int) -> HttpResponse:
-        user_id = request.session.get("user_id")
-        if not user_id:
-            return redirect("authentication:login")
+        user_id = request.user.id
 
         action = request.POST.get("status")
 
@@ -454,9 +409,7 @@ class WorkoutSessionDetailView(View):
         return redirect("tracker:sessions_list")
 
     def patch(self, request: HttpRequest, session_id: int) -> JsonResponse:
-        user_id = request.session.get("user_id")
-        if not user_id:
-            return JsonResponse({"detail": "Authentication required"}, status=401)
+        user_id = request.user.id
 
         try:
             payload = json.loads(request.body.decode("utf-8"))
@@ -479,11 +432,9 @@ class WorkoutSessionDetailView(View):
         return JsonResponse(WorkoutSessionSchema.model_validate(session).model_dump(), status=200)
 
 
-class WorkoutSessionStartView(View):
+class WorkoutSessionStartView(LoginRequiredMixin, View):
     def post(self, request: HttpRequest, plan_id: int) -> HttpResponse:
-        user_id = request.session.get("user_id")
-        if not user_id:
-            return redirect("authentication:login")
+        user_id = request.user.id
 
         try:
             session_service.start_session(user_id, plan_id)
@@ -496,11 +447,9 @@ class WorkoutSessionStartView(View):
         return redirect("tracker:sessions_list")
 
 
-class WorkoutSessionDeleteView(View):
+class WorkoutSessionDeleteView(ApiLoginRequiredMixin, View):
     def delete(self, request: HttpRequest, session_id: int) -> JsonResponse:
-        user_id = request.session.get("user_id")
-        if not user_id:
-            return JsonResponse({"detail": "Authentication required"}, status=401)
+        user_id = request.user.id
 
         try:
             session_service.delete_session(session_id, user_id)
@@ -511,14 +460,9 @@ class WorkoutSessionDeleteView(View):
         return JsonResponse({"message": "Workout session deleted"}, status=204)
 
 
-class WeightTrackerListView(View):
-    def dispatch(self, request: HttpRequest, *args, **kwargs):
-        if not request.session.get("user_id"):
-            return redirect("authentication:login")
-        return super().dispatch(request, *args, **kwargs)
-
+class WeightTrackerListView(LoginRequiredMixin, View):
     def get(self, request: HttpRequest) -> HttpResponse:
-        user_id = request.session["user_id"]
+        user_id = request.user.id
 
         try:
             weight_trackers = weight_tracker_service.get_all_by_user(user_id)
@@ -532,13 +476,11 @@ class WeightTrackerListView(View):
             "weight_tracker/list.html",
             {
                 "weight_trackers": weight_trackers,
-                "user_id": user_id,
-                "email": request.session.get("email"),
             },
         )
 
     def post(self, request: HttpRequest) -> HttpResponse:
-        user_id = request.session["user_id"]
+        user_id = request.user.id
 
         weight = request.POST.get("weight")
         entry_date = request.POST.get("date")
@@ -562,14 +504,9 @@ class WeightTrackerListView(View):
         return redirect("tracker:weight_tracker_list")
 
 
-class WeightTrackerDetailView(View):
-    def dispatch(self, request: HttpRequest, *args, **kwargs):
-        if not request.session.get("user_id"):
-            return redirect("authentication:login")
-        return super().dispatch(request, *args, **kwargs)
-
+class WeightTrackerDetailView(LoginRequiredMixin, View):
     def get(self, request: HttpRequest, weight_tracker_id: int) -> HttpResponse:
-        user_id = request.session["user_id"]
+        user_id = request.user.id
 
         try:
             wt = weight_tracker_service.get_by_id(weight_tracker_id, user_id)
@@ -583,13 +520,11 @@ class WeightTrackerDetailView(View):
             "weight_tracker/detail.html",
             {
                 "weight": wt,
-                "user_id": user_id,
-                "email": request.session.get("email"),
             },
         )
 
     def post(self, request: HttpRequest, weight_tracker_id: int) -> HttpResponse:
-        user_id = request.session["user_id"]
+        user_id = request.user.id
 
         if request.POST.get("_method") == "delete":
             try:

@@ -16,8 +16,8 @@ where the numbers are not enough.
 
 ## Users
 
-A single kind of end user: a person who trains and wants a plan that follows their real results. An `ADMIN`
-status exists for catalog maintenance.
+A single kind of end user: a person who trains and wants a plan that follows their real results. Staff users
+(`is_staff`) maintain the shared exercise catalog.
 
 ## Fixed decisions
 
@@ -52,11 +52,12 @@ the training engine, the AI coach, a JSON API, an MCP server, background reports
 
 Written honestly so that each item can be closed by a pull request and then removed from this list.
 
-- Authentication stores `user_id` in the session by hand instead of using `django.contrib.auth`.
-- Any logged-in user can create, edit and delete exercises in the shared catalog.
 - The Docker build copies the whole working directory; there was no `.dockerignore` before this change.
 - A workout session stores only its duration, not what was performed (no per-set results).
 - `Exercise.type` is a free-text field; there are no muscle groups or equipment.
+- `User.status` (ADMIN/CUSTOMER) is a leftover second source of truth next to `is_staff`; `limit_choices_to` and
+  the admin still filter by it.
+- There is no way to archive an exercise: one used in a plan cannot be deleted, only left in place.
 - The repository layer is a thin wrapper and the services mix function and class styles.
 - `tracker/views.py` mixes HTML views and JSON endpoints in one 600-line module.
 

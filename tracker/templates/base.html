@@ -12,18 +12,28 @@
         <h1><a href="/">Fitness Tracker</a></h1>
         <nav>
           <a href="/">Home</a>
-          {% if user_id %}
-            <span class="user-indicator">Welcome, {{ email }}</span>
-            <a href="/authentication/profile/">Profile</a>
-            <a href="/authentication/logout/">Logout</a>
+          {% if user.is_authenticated %}
+            <span class="user-indicator">Welcome, {{ user.email }}</span>
+            <a href="{% url 'authentication:profile' %}">Profile</a>
+            <form method="post" action="{% url 'authentication:logout' %}" style="display:inline">
+              {% csrf_token %}
+              <button type="submit" class="auth-button">Logout</button>
+            </form>
           {% else %}
-            <a href="/authentication/login/">Login</a>
-            <a href="/authentication/register/">Register</a>
+            <a href="{% url 'authentication:login' %}">Login</a>
+            <a href="{% url 'authentication:register' %}">Register</a>
           {% endif %}
         </nav>
       </div>
     </header>
     <main class="container">
+      {% if messages %}
+        <ul class="messages">
+          {% for message in messages %}
+            <li class="message {{ message.tags }}">{{ message }}</li>
+          {% endfor %}
+        </ul>
+      {% endif %}
       {% block content %}{% endblock %}
     </main>
     <footer>

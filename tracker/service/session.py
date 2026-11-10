@@ -42,7 +42,7 @@ class WorkoutSessionServiceImpl(WorkoutSessionService):
             raise ServiceError("You already have an active session.", code=400)
 
         try:
-            plan = WorkoutPlan.objects.get(id=plan_id)
+            plan = WorkoutPlan.objects.get(id=plan_id, creator_id=user_id)
         except WorkoutPlan.DoesNotExist:
             raise ServiceError(f"Workout plan {plan_id} not found.", code=404)
 

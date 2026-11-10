@@ -19,6 +19,7 @@ class ExerciseFactory(DjangoModelFactory):
     name = factory.Sequence(lambda n: f"Exercise {n}")
     type = "strength"
     description = "Test exercise description"
+    owner = None
 
 
 class WorkoutPlanFactory(DjangoModelFactory):
