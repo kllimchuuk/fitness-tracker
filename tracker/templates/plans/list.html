@@ -5,9 +5,7 @@
   <div class="plans-header">
     <h2>🏋️ My Workout Plans</h2>
 
-    {% if user_id %}
       <a href="{% url 'tracker:plan_create' %}" class="create-plan-btn">+ New Plan</a>
-    {% endif %}
   </div>
 
   {% if plans %}
@@ -51,9 +49,7 @@
   {% else %}
     <div class="empty-state">
       <p>You don’t have any workout plans yet.</p>
-      {% if user_id %}
         <a href="{% url 'tracker:plan_create' %}" class="create-plan-btn">Create your first plan</a>
-      {% endif %}
     </div>
   {% endif %}
 </div>

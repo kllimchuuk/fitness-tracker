@@ -121,9 +121,9 @@ class TestApiExerciseDetail:
         response = client.get(self.url(exercise.id))
         assert response.status_code == 401
 
-    def test_put_updates_all_fields(self, auth_client, exercise):
+    def test_put_updates_all_fields(self, staff_client, exercise):
         payload = {"name": "Updated Name", "type": "cardio", "description": "Updated desc"}
-        response = auth_client.put(
+        response = staff_client.put(
             self.url(exercise.id),
             data=json.dumps(payload),
             content_type="application/json",
@@ -134,18 +134,18 @@ class TestApiExerciseDetail:
         assert data["type"] == "cardio"
         assert data["description"] == "Updated desc"
 
-    def test_put_returns_400_when_name_missing(self, auth_client, exercise):
+    def test_put_returns_400_when_name_missing(self, staff_client, exercise):
         payload = {"type": "cardio"}
-        response = auth_client.put(
+        response = staff_client.put(
             self.url(exercise.id),
             data=json.dumps(payload),
             content_type="application/json",
         )
         assert response.status_code == 400
 
-    def test_patch_updates_single_field(self, auth_client, exercise):
+    def test_patch_updates_single_field(self, staff_client, exercise):
         payload = {"name": "Patched Name"}
-        response = auth_client.patch(
+        response = staff_client.patch(
             self.url(exercise.id),
             data=json.dumps(payload),
             content_type="application/json",
@@ -162,9 +162,9 @@ class TestApiExerciseDetail:
         )
         assert response.status_code == 404
 
-    def test_delete_removes_exercise(self, auth_client, exercise):
+    def test_delete_removes_exercise(self, staff_client, exercise):
         exercise_id = exercise.id
-        response = auth_client.delete(self.url(exercise_id))
+        response = staff_client.delete(self.url(exercise_id))
         assert response.status_code == 204
         assert not Exercise.objects.filter(id=exercise_id).exists()
 

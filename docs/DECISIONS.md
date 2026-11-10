@@ -50,3 +50,30 @@ Each entry: date, decision, why, what changed. Newest at the bottom.
      moved to a `dev` dependency group. The Docker image installs from the lock file into `/opt/venv`, outside
      the directory docker-compose bind-mounts. CI runs `uv sync --locked`, so a stale lock file fails the build.
      Minimum Python is now 3.13, matching the image and CI.
+
+## 2026-11-10 — Django auth and catalog permissions
+
+9. **Use `django.contrib.auth` (`authenticate`, `login`, `request.user`, `login_required`) instead of a hand-rolled
+   `session["user_id"]`.**
+   - *Why:* the hand-rolled version ignored `is_active`, did not invalidate sessions on password change, did not
+     use the configured password validators and duplicated the login check in about twenty views.
+   - *Changed:* logout is POST-only (a GET could log a user out from an image tag); password change calls
+     `update_session_auth_hash`; JSON endpoints answer 401 through `ApiLoginRequiredMixin` while HTML views
+     redirect to the login page. `?next=` is honoured only for same-host URLs. Emails are unique and looked up
+     case-insensitively (`UniqueConstraint(Lower("email"))`, `get_by_natural_key` with `iexact`), because rows
+     created before normalisation kept the capitals of their domain.
+
+10. **`Exercise.owner` (nullable FK): `null` is a system exercise, otherwise a private one. Staff (`is_staff`)
+    manage system exercises; users manage only their own.**
+    - *Why:* the shared catalog was writable by any logged-in user. A separate model for private exercises
+      would have duplicated every query and serializer.
+    - *Rules:* users see system exercises plus their own (`Exercise.objects.visible_to`). An exercise that is
+      invisible to the user is a 404, one that is visible but not theirs to change is a 403. Exercises created
+      by staff are always system exercises. Plans accept only visible exercises; sets of a plan and sessions
+      can be touched only through the plan's creator.
+    - *Migration:* every exercise that existed before `0004_exercise_owner` becomes a system exercise
+      (`owner = NULL`).
+    - *Deleting:* `ExerciseSet.exercise` is `PROTECT`. An exercise that is part of a plan cannot be deleted (HTML
+      shows "used in N plans", the API answers 409) instead of silently disappearing from every user's plans;
+      per-set history in PR 3 depends on that.
+    - *Privacy:* the exercise detail page lists only the viewer's own plans.

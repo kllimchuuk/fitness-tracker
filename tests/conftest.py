@@ -20,21 +20,41 @@ def user(db):
 
 @pytest.fixture
 def auth_client(client, user):
-    """
-    Simulates session-based login used by this project.
-    Cannot use client.force_login() because views check request.session["user_id"],
-    not request.user.
-    """
-    session = client.session
-    session["user_id"] = user.id
-    session["email"] = user.email
-    session.save()
+    client.force_login(user)
     return client
 
 
 @pytest.fixture
+def staff_user(db):
+    return UserFactory(is_staff=True)
+
+
+@pytest.fixture
+def staff_client(staff_user):
+    client = Client()
+    client.force_login(staff_user)
+    return client
+
+
+@pytest.fixture
+def other_user(db):
+    return UserFactory()
+
+
+@pytest.fixture
 def exercise(db):
+    """A system exercise (no owner)."""
     return ExerciseFactory()
+
+
+@pytest.fixture
+def owned_exercise(db, user):
+    return ExerciseFactory(owner=user)
+
+
+@pytest.fixture
+def other_exercise(db, other_user):
+    return ExerciseFactory(owner=other_user)
 
 
 @pytest.fixture

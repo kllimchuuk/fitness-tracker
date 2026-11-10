@@ -1,15 +1,50 @@
+from typing import TYPE_CHECKING
+
 from django.conf import settings
 from django.db import models
 from django.db.models import ManyToManyField
 from django.db.models import Q
 
-# Create your models here.
+if TYPE_CHECKING:
+    from django.contrib.auth.models import AnonymousUser
+
+    from authentication.models import User
+
+
+class ExerciseQuerySet(models.QuerySet["Exercise"]):
+    def visible_to(self, user: "User | AnonymousUser") -> "ExerciseQuerySet":
+        """System exercises plus the user's own."""
+        if user.is_authenticated:
+            return self.filter(Q(owner__isnull=True) | Q(owner=user))
+        return self.filter(owner__isnull=True)
 
 
 class Exercise(models.Model):
     name = models.CharField(max_length=256)
     type = models.CharField(max_length=256)
     description = models.TextField()
+    # null = system exercise, managed by staff only
+    owner = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.CASCADE,
+        related_name="exercises",
+    )
+
+    objects = ExerciseQuerySet.as_manager()
+
+    @staticmethod
+    def owner_for(user: "User") -> "User | None":
+        """Staff create system exercises (no owner); everyone else creates private ones."""
+        return None if user.is_staff else user
+
+    def can_be_managed_by(self, user: "User | AnonymousUser") -> bool:
+        if not user.is_authenticated:
+            return False
+        if self.owner_id is None:
+            return user.is_staff
+        return self.owner_id == user.id
 
 
 class WeightTracker(models.Model):
@@ -52,7 +87,7 @@ class WorkoutSession(models.Model):
 
 
 class ExerciseSet(models.Model):
-    exercise = models.ForeignKey("Exercise", on_delete=models.CASCADE)
+    exercise = models.ForeignKey("Exercise", on_delete=models.PROTECT)
     workout_plan = models.ForeignKey("WorkoutPlan", on_delete=models.CASCADE)
     sets = models.PositiveIntegerField()
     reps = models.PositiveIntegerField()

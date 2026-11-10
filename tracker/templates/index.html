@@ -5,7 +5,7 @@
   <div class="welcome-card">
     <h2>Welcome to Fitness Tracker</h2>
     
-    {% if user_id %}
+    {% if user.is_authenticated %}
       <div class="main-info">
         <a href="{% url 'tracker:exercises_list' %}" class="auth-button"> Exercises</a>
         <a href="{% url 'tracker:plans_list' %}" class="auth-button"> Workout Plans</a>
@@ -16,7 +16,10 @@
       <div class="user-info">
         <p>Welcome back! You are logged in.</p>
         <div class="auth-actions">
-          <a href="/authentication/logout/" class="auth-button">Logout</a>
+          <form method="post" action="{% url 'authentication:logout' %}" style="display:inline">
+            {% csrf_token %}
+            <button type="submit" class="auth-button">Logout</button>
+          </form>
         </div>
       </div>
     {% else %}

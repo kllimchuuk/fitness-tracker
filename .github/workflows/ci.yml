@@ -59,5 +59,7 @@ jobs:
           enable-cache: true
       # fails if uv.lock is out of date with pyproject.toml
       - run: uv sync --locked
+      # fails if a model change has no migration
+      - run: uv run python manage.py makemigrations --check --dry-run
       # addopts in pyproject.toml enforces the coverage gate (--cov-fail-under)
       - run: uv run pytest

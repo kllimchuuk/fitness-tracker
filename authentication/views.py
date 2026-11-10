@@ -1,20 +1,24 @@
 import logging
 import re
 
-from django.contrib.auth.hashers import check_password
-from django.contrib.auth.hashers import make_password
+from django.contrib.auth import authenticate
+from django.contrib.auth import login
+from django.contrib.auth import logout
+from django.contrib.auth import password_validation
+from django.contrib.auth import update_session_auth_hash
+from django.contrib.auth.decorators import login_required
 from django.core.exceptions import ValidationError
 from django.http import HttpRequest
 from django.http import HttpResponse
 from django.shortcuts import redirect
 from django.shortcuts import render
+from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.csrf import csrf_protect
+from django.views.decorators.http import require_POST
 
-from .decorators import require_auth
 from .models import User
 
 EMAIL_REGEX = re.compile(r"^[^@]+@[^@]+\.[^@]+$")
-PASSWORD_MIN_LEN = 8
 AGE_MIN, AGE_MAX = 1, 120
 HEIGHT_MIN, HEIGHT_MAX = 50.0, 300.0
 GOAL_MAX_LEN = 256
@@ -22,19 +26,21 @@ logger = logging.getLogger(__name__)
 
 
 def validate_email(email: str, check_exists: bool = True) -> str:
-    email = (email or "").strip()
+    email = User.objects.normalize_email((email or "").strip())
     if not email:
         raise ValidationError("Email is required")
     if not EMAIL_REGEX.match(email):
         raise ValidationError("Invalid email format")
-    if check_exists and User.objects.filter(email=email).exists():
+    if check_exists and User.objects.filter(email__iexact=email).exists():
         raise ValidationError("Email already exists")
     return email
 
 
-def validate_password(password: str) -> str:
-    if len(password) < PASSWORD_MIN_LEN:
-        raise ValidationError(f"Password must be at least {PASSWORD_MIN_LEN} characters")
+def validate_password(password: str, user: User | None = None) -> str:
+    try:
+        password_validation.validate_password(password, user)
+    except ValidationError as e:
+        raise ValidationError(" ".join(e.messages))
     return password
 
 
@@ -71,22 +77,24 @@ def validate_goal(goal: str) -> str:
     return goal
 
 
-def create_user(email: str, password: str, age: int, height: float, goal: str) -> User:
-    user = User(email=email)
-    user.password = make_password(password)
-    user.status = User.Status.CUSTOMER
-
-    user.age = age
-    user.height = height
-    user.goal = goal
-
-    return user
-
-
 def create_and_save_user(email: str, password: str, age: int, height: float, goal: str) -> User:
-    user = create_user(email, password, age, height, goal)
-    user.save()
-    return user
+    return User.objects.create_user(
+        email=email,
+        password=password,
+        status=User.Status.CUSTOMER,
+        age=age,
+        height=height,
+        goal=goal,
+    )
+
+
+def redirect_after_login(request: HttpRequest) -> HttpResponse:
+    next_url = request.POST.get("next") or request.GET.get("next", "")
+    if next_url and url_has_allowed_host_and_scheme(
+        next_url, allowed_hosts={request.get_host()}, require_https=request.is_secure()
+    ):
+        return redirect(next_url)
+    return redirect("/")
 
 
 def render_error(request: HttpRequest, error_message: str) -> HttpResponse:
@@ -135,18 +143,9 @@ def register_view(request: HttpRequest) -> HttpResponse:
         logger.error(f"Registration error: {e}")
         return render_error(request, "Registration failed. Please try again.")
 
-    request.session.cycle_key()
-    request.session["user_id"] = user.id
-    request.session["email"] = validated_email
+    login(request, user)
     logger.info(f"New user registered: {validated_email}")
     return redirect("/")
-
-
-def authenticate_user(email: str, password: str) -> User:
-    user = User.objects.get(email=email)
-    if not check_password(password, user.password):
-        raise ValidationError("Invalid password")
-    return user
 
 
 @csrf_protect
@@ -163,48 +162,36 @@ def login_view(request: HttpRequest) -> HttpResponse:
         except ValidationError:
             return render(request, "login.html", {"error": "Invalid credentials"})
 
-        try:
-            user = authenticate_user(validated_email, password)
-        except (ValidationError, User.DoesNotExist):
-            logger.warning(f"Login attempt for non-existent email: {validated_email}")
+        user = authenticate(request, username=validated_email, password=password)
+        if user is None:
+            logger.warning(f"Failed login attempt for: {validated_email}")
             return render(request, "login.html", {"error": "Invalid credentials"})
 
-        request.session.cycle_key()
-        request.session["user_id"] = user.id
-        request.session["email"] = validated_email
+        login(request, user)
         logger.info(f"User logged in: {validated_email}")
-        return redirect("/")
+        return redirect_after_login(request)
 
     return render(request, "login.html")
 
 
+@require_POST
 @csrf_protect
 def logout_view(request: HttpRequest) -> HttpResponse:
-    email = request.session.get("email", "Unknown")
-
-    if email != "Unknown":
-        try:
-            validated_email = validate_email(email, check_exists=False)
-        except ValidationError:
-            validated_email = "Invalid email format"
-    else:
-        validated_email = "Unknown"
-
-    request.session.flush()
-    logger.info(f"User logged out: {validated_email}")
-    return redirect("/authentication/login/")
+    if request.user.is_authenticated:
+        logger.info(f"User logged out: {request.user.email}")
+    logout(request)
+    return redirect("authentication:login")
 
 
-@require_auth
+@login_required
 @csrf_protect
 def profile_view(request: HttpRequest) -> HttpResponse:
-    user = request.current_user  # type: ignore[attr-defined]
+    user = request.user
 
     return render(
         request,
         "profile.html",
         {
-            "user_id": user.id,
             "email": user.email,
             "status": user.status,
             "age": user.age,
@@ -214,10 +201,10 @@ def profile_view(request: HttpRequest) -> HttpResponse:
     )
 
 
-@require_auth
+@login_required
 @csrf_protect
 def profile_edit_view(request: HttpRequest) -> HttpResponse:
-    user = request.current_user  # type: ignore[attr-defined]
+    user = request.user
 
     if request.method != "POST":
         return render(request, "profile_edit.html", {"user": user})
@@ -249,10 +236,10 @@ def profile_edit_view(request: HttpRequest) -> HttpResponse:
     return redirect("/authentication/profile/")
 
 
-@require_auth
+@login_required
 @csrf_protect
 def change_password_view(request: HttpRequest) -> HttpResponse:
-    user = request.current_user  # type: ignore[attr-defined]
+    user = request.user
 
     if request.method != "POST":
         return render(request, "profile_password.html")
@@ -260,11 +247,11 @@ def change_password_view(request: HttpRequest) -> HttpResponse:
     current = request.POST.get("current_password", "")
     new = request.POST.get("new_password", "")
 
-    if not check_password(current, user.password):
+    if not user.check_password(current):
         return render(request, "profile_password.html", {"error": "Incorrect current password"})
 
     try:
-        validate_password(new)
+        validate_password(new, user)
     except ValidationError as e:
         return render(request, "profile_password.html", {"error": str(e)})
 
@@ -275,8 +262,8 @@ def change_password_view(request: HttpRequest) -> HttpResponse:
             {"error": "The new password matches the old one"},
         )
 
-    user.password = make_password(new)
+    user.set_password(new)
     user.save()
-    request.session.cycle_key()
+    update_session_auth_hash(request, user)
     logger.info(f"User password changed: {user.email}")
     return redirect("/authentication/profile/")

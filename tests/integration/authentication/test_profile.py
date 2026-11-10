@@ -1,5 +1,6 @@
 import pytest
 from django.contrib.auth.hashers import check_password
+from django.test import Client
 
 PROFILE_URL = "/authentication/profile/"
 PROFILE_EDIT_URL = "/authentication/profile/edit/"
@@ -96,6 +97,38 @@ class TestChangePasswordView:
         )
         user.refresh_from_db()
         assert check_password("newpassword456", user.password)
+
+    def test_valid_password_change_keeps_user_logged_in(self, auth_client):
+        auth_client.post(
+            PROFILE_PASSWORD_URL,
+            {
+                "current_password": "testpass123",
+                "new_password": "newpassword456",
+            },
+        )
+        assert auth_client.get(PROFILE_URL).status_code == 200
+
+    def test_password_change_logs_out_other_sessions(self, auth_client, user):
+        other_device = Client()
+        other_device.force_login(user)
+        assert other_device.get(PROFILE_URL).status_code == 200
+
+        auth_client.post(PROFILE_PASSWORD_URL, {"current_password": "testpass123", "new_password": "newpassword456"})
+
+        response = other_device.get(PROFILE_URL)
+        assert response.status_code == 302
+        assert LOGIN_URL in response["Location"]
+
+    def test_common_password_is_rejected(self, auth_client, user):
+        response = auth_client.post(PROFILE_PASSWORD_URL, {"current_password": "testpass123", "new_password": "password"})
+        assert response.status_code == 200
+        assert b"too common" in response.content
+        user.refresh_from_db()
+        assert user.check_password("testpass123")
+
+    def test_numeric_password_is_rejected(self, auth_client):
+        response = auth_client.post(PROFILE_PASSWORD_URL, {"current_password": "testpass123", "new_password": "98765432101"})
+        assert b"entirely numeric" in response.content
 
     def test_wrong_current_password_returns_error(self, auth_client):
         response = auth_client.post(

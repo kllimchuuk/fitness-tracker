@@ -39,7 +39,7 @@ class TestRegisterView:
         )
         assert response["Location"] == "/"
 
-    def test_valid_data_sets_session(self, client):
+    def test_valid_data_logs_user_in(self, client):
         client.post(
             REGISTER_URL,
             {
@@ -50,8 +50,9 @@ class TestRegisterView:
                 "goal": "Build muscle",
             },
         )
-        assert "user_id" in client.session
-        assert client.session["email"] == "newuser@test.com"
+        user = User.objects.get(email="newuser@test.com")
+        assert client.session["_auth_user_id"] == str(user.id)
+        assert user.check_password("securepass123")
 
     def test_duplicate_email_returns_error(self, client, db):
         UserFactory(email="existing@test.com")

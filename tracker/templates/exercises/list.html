@@ -22,7 +22,7 @@
     </div>
   </div>
 
-  {% if user_id %}
+  {% if user.is_authenticated %}
   <form action="{% url 'tracker:exercise_create' %}" method="post" style="margin:16px 0">
     {% csrf_token %}
     <div style="display:flex;gap:8px;flex-wrap:wrap">

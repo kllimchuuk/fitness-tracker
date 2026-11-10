@@ -9,6 +9,7 @@ header a{color:var(--fg);text-decoration:none}
 nav{display:flex;align-items:center;gap:16px}
 nav a{margin-left:0;color:var(--muted);text-decoration:none;transition:color 0.2s}
 nav a:hover{color:var(--accent)}
+nav form .auth-button{padding:4px 12px;font-size:inherit}
 .user-indicator{color:var(--accent);font-weight:500;margin-right:8px}
 main{padding:24px 0}
 footer{border-top:1px solid #1c2128;color:var(--muted);padding:16px 0}
@@ -48,3 +49,8 @@ footer{border-top:1px solid #1c2128;color:var(--muted);padding:16px 0}
     margin-bottom: 4px;
     display: block;
   }
+.messages{list-style:none;margin:16px 0;padding:0}
+.message{padding:10px 14px;border-radius:6px;margin-bottom:8px;background:#12151a;border:1px solid #1c2128;color:var(--muted)}
+.message.success{border-color:#2ea043}
+.message.error{border-color:#dc3545}
+.message.warning{border-color:#d29922}
