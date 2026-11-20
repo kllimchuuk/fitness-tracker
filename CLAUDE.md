@@ -55,7 +55,7 @@ A new dependency needs an entry in `docs/DECISIONS.md` first. Not used on purpos
 ## Code
 
 - Layout: feature apps (`authentication`, `tracker`, later `api`, `agent`); view -> service -> repository; views and routes hold no logic.
-- All queries live in repositories. Repositories hold no logic: no `if`, loops, `or` defaults or row-to-schema mapping; the service decides and maps. Repository methods take plain arguments: no `*`, `*args`, `**kwargs` or keyword-only markers (`tests/test_repositories_hold_no_logic.py` fails otherwise). The shared `base.py` is the one exception.
+- New queries live in repositories (existing `objects.` calls in views and services are listed in SPEC, Current state, and move as slices touch them). Repositories hold no logic: no `if`, loops, `try`, `or` defaults or row-to-schema mapping; the service decides and maps. The test catches the constructs, not the mapping. Repository methods take plain arguments: no `*`, `*args`, `**kwargs` or keyword-only markers (`tests/test_repositories_hold_no_logic.py` fails otherwise). The shared `base.py` is the one exception.
 - Repositories are `ABC` + implementation.
 - Domain errors live in `exceptions.py` of the feature and are mapped to HTTP in one place.
 - Settings have defaults only where safe; required ones fail at start-up (`config/env.py`).

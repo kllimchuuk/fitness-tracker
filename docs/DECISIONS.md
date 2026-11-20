@@ -87,8 +87,13 @@ Each entry: date, decision, why, what changed. Newest at the bottom.
 
 12. **The no-comments guard skips `migrations/`.**
     - *Why:* Django generates migration files with header comments on every `makemigrations`; stripping them by hand is churn that the next generated migration undoes.
-    - *Where the reasons went:* `DEBUG` is read as an optional string because docker-compose passes `DEBUG: ${DEBUG}`, an empty string when the variable is unset; list settings use `NoDecode` because the value is a plain comma-separated string, not JSON; emails are matched case-insensitively because rows created before normalisation kept the capitals of their domain (decision 9).
+    - *Where the reasons went:* `env_ignore_empty=True` makes an empty variable count as unset, because docker-compose passes `DEBUG: ${DEBUG}`, an empty string when the variable is unset, and `DEBUG` stays a real `bool`; list settings use `NoDecode` because the value is a plain comma-separated string, not JSON; emails are matched case-insensitively because rows created before normalisation kept the capitals of their domain (decision 9).
 
 13. **Subagents run on the strongest model (Opus 5.5).**
     - *Why:* a review or research subagent starts with a fresh context and is trusted to find what the main session missed; a weaker model there makes the check cheaper but less useful.
     - *Changed:* `model: opus` in `.claude/agents/reviewer.md`; a rule in `CLAUDE.md` for every other subagent.
+
+14. **The reviewer's Bash hook is a per-command allowlist of flags, and fails closed.**
+    - *Why:* the first version denied a list of dangerous flags, which stuck short options (`-Orm`, `-oout.txt`), abbreviated long options (`--open=`, `--untrack`) and options that write (`--log-file`, `--pastebin`) walked past. The reviewer has no Write tool, so the hook is the only barrier against injected text in the repository.
+    - *Changed:* every command has the flags it may take, nothing else; `ruff format` is checked on parsed tokens, not the raw string; `docker compose` is limited to `ps` and `config --quiet|--services|--no-interpolate` because plain `config` prints secrets from `.env`; `pytest` needs `--tb=short|line|no` because a long traceback prints the database DSN with its password; `DB_HOST=localhost` is the one allowed environment prefix; an unreadable call or an exception in the hook blocks instead of passing. `.claude/settings.json` no longer auto-approves `git add .`, `git add -f`, `git branch -D`, `git switch -C`, `git commit --amend` or `docker compose down|run|exec`.
+    - *Also:* `tests/test_no_comments.py` scans every Python file outside `migrations/` and only accepts real tool directives; `tests/test_repositories_hold_no_logic.py` rejects `try` and also finds nested or `repositories/` modules.

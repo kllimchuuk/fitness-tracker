@@ -16,8 +16,14 @@ LOGIC = (
     ast.DictComp,
     ast.GeneratorExp,
     ast.BoolOp,
+    ast.Try,
+    ast.TryStar,
 )
-REPOSITORIES = sorted(path for path in ROOT.glob("*/repository/*.py") if path.name not in {"__init__.py", "base.py"})
+REPOSITORIES = sorted(
+    path
+    for path in ROOT.glob("*/repositor*/**/*.py")
+    if path.name not in {"__init__.py", "base.py"} and "migrations" not in path.parts
+)
 
 
 def test_the_repositories_are_found() -> None:

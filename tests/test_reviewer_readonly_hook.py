@@ -33,9 +33,15 @@ def run_hook(command: str, tool_name: str = "Bash") -> subprocess.CompletedProce
         "git grep -n SKIP_LOCKED",
         "uv run ruff check .",
         "uv run ruff format --check .",
-        "uv run pytest -q",
-        "uv run pytest tests/test_env.py -q",
+        "uv run pytest -q --tb=short",
+        "uv run pytest tests/test_env.py -q --tb=line",
+        "DB_HOST=localhost uv run pytest -q --no-cov --tb=short",
+        "DB_HOST=localhost uv run pytest tests/test_env.py -k email --tb=no",
+        "git grep -c -F objects.",
+        "git grep -n -i -e import tracker",
         "docker compose config --quiet",
+        "docker compose config --no-interpolate",
+        "docker compose ps",
         "git log --oneline main..HEAD | head -20",
         "git diff main...HEAD | wc -l",
         "git log -p main..HEAD",
@@ -77,6 +83,24 @@ def test_read_only_commands_are_allowed(command: str) -> None:
         "uv run ruff check . --output-file out.txt",
         "docker compose config -o out.yml",
         "git grep -e foo --no-index",
+        "git grep -Orm -e import",
+        "git grep --open=rm -e import",
+        "git grep --untrack --no-exclude-standard -e KEY",
+        "git diff --out=out.patch",
+        "uv run pytest --log-file=tracker/views.py tests/test_env.py --tb=short",
+        "uv run pytest --pastebin=all --tb=short",
+        "uv run pytest -p no:cacheprovider --tb=short",
+        "uv run pytest -o addopts= --tb=short",
+        "uv run ruff check . -oout.txt",
+        "docker compose config -oout.yml",
+        "docker compose config -qo out.yml",
+        "uv run ruff format --exclude 'x --check ' .",
+        "uv run pytest -q",
+        "uv run pytest --tb=long",
+        "docker compose config",
+        "docker compose run web cat /config/.env",
+        "DB_HOST=localhost git status",
+        "DB_HOST=db uv run pytest --tb=short",
         "docker compose up -d",
         "docker compose down",
         "curl https://example.com",
@@ -101,6 +125,20 @@ def test_missing_command_is_blocked() -> None:
     result = subprocess.run(
         [sys.executable, str(HOOK)],
         input=json.dumps({"tool_name": "Bash", "tool_input": {}}),
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 2
+    assert BLOCK_MESSAGE in result.stderr
+
+
+@pytest.mark.parametrize("stdin", ["", "not json", "[]", '{"tool_name": "Bash", "tool_input": {"command": 5}}'])
+def test_unreadable_input_is_blocked(stdin: str) -> None:
+    result = subprocess.run(
+        [sys.executable, str(HOOK)],
+        input=stdin,
         capture_output=True,
         text=True,
         check=False,

@@ -7,7 +7,7 @@ description: Work loop for implementing one slice (S0-S8) of the Fitness Tracker
 
 Follow these steps in order. The slice list is in `docs/SPEC.md` (Slices); the rules behind it are in `CLAUDE.md`.
 
-1. **Read.** Open the slice in the SPEC and every section it names (Fixed decisions, Invariants, Target architecture, Acceptance tests). If the SPEC is silent or wrong, stop and report "Decision needed" with a recommendation; do not guess.
+1. **Read.** Open the slice in the SPEC and every section it names (Fixed decisions, Invariants with their acceptance tests, Target architecture). If the SPEC is silent or wrong, stop and report "Decision needed" with a recommendation; do not guess.
 2. **Branch.** Check `git branch --show-current`. Work on a branch named by commit type for this slice (`feat/exercise-set-logs`). Never on `main`. If it does not exist, create it with `git switch -c`.
 3. **Test first.** Write the failing test for the acceptance criterion in `tests/`, against real PostgreSQL with factories from `tests/factories`. Run it and see it fail for the right reason.
 4. **Implement.** Smallest code that passes, following `CLAUDE.md`:
