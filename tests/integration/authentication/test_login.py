@@ -71,7 +71,6 @@ class TestLoginView:
 class TestLegacyEmails:
     @pytest.fixture
     def legacy_user(self):
-        # created before normalize_email was applied: the domain keeps its capitals
         return UserFactory(email="legacy@Gmail.com", password="testpass123")
 
     @pytest.mark.parametrize("typed", ["legacy@Gmail.com", "legacy@gmail.com", "LEGACY@gmail.com"])

@@ -23,7 +23,7 @@ class TestWorkoutSessionListView:
     def test_list_shows_only_user_sessions(self, auth_client, user):
         WorkoutSessionFactory(user=user)
         WorkoutSessionFactory(user=user)
-        WorkoutSessionFactory()  # other user's session
+        WorkoutSessionFactory()
         response = auth_client.get(self.url)
         assert len(response.context["sessions"]) == 2
 
@@ -54,7 +54,6 @@ class TestWorkoutSessionStartView:
     def test_start_fails_when_active_session_exists(self, auth_client, user, plan):
         WorkoutSessionFactory(user=user, status="active")
         auth_client.post(self.url(plan.id))
-        # Only one active session should exist
         assert WorkoutSession.objects.filter(user=user, status="active").count() == 1
 
     def test_start_for_nonexistent_plan_redirects(self, auth_client):
