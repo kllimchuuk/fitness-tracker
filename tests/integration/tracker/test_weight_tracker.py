@@ -23,7 +23,7 @@ class TestWeightTrackerListView:
     def test_list_shows_only_user_entries(self, auth_client, user):
         WeightTrackerFactory(user=user)
         WeightTrackerFactory(user=user)
-        WeightTrackerFactory()  # other user's entry
+        WeightTrackerFactory()
         response = auth_client.get(self.url)
         assert len(response.context["weight_trackers"]) == 2
 
