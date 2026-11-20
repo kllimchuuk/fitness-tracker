@@ -2,7 +2,7 @@
 name: reviewer
 description: Independent read-only reviewer for a slice branch of Fitness Tracker. Use before opening a pull request, after a risky change to permissions, authentication, the training engine, the LLM client or the cascade, and again after review fixes to confirm they hold. Starts with a fresh context and never edits files.
 tools: Read, Grep, Glob, Bash
-model: inherit
+model: opus
 effort: high
 maxTurns: 30
 skills:

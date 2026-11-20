@@ -32,6 +32,7 @@ Invariants (SPEC, Invariants). Never break them; every change must keep a test f
 - Spec first. Read the slice in SPEC (Slices) and its sections before writing code. Write the failing test for the acceptance criterion, then the code. Use the `spec-slice` skill.
 - Do not bypass the SPEC silently. If it is wrong or silent, stop and report it as "Decision needed" with a recommendation; the owner decides, and the answer goes into `docs/DECISIONS.md`.
 - Update the docs in the same change as the code that makes them true.
+- Subagents run on the strongest model (Opus 5.5): set `model: opus` in the agent definition, or pass `model: "opus"` when spawning one.
 - Review before merge: run the `reviewer` subagent (read-only, fresh context) on the branch, and again after the fixes to confirm they hold. Fix findings in separate `fix: address review ...` commits, each with a test that failed first.
 - Reports use this shape (`report` skill): Done / Numbers (measured only, with the command) / Deviations from SPEC / Decision needed / Next.
 - Never invent numbers. A figure needs a command or a file it came from.

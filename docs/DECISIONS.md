@@ -88,3 +88,7 @@ Each entry: date, decision, why, what changed. Newest at the bottom.
 12. **The no-comments guard skips `migrations/`.**
     - *Why:* Django generates migration files with header comments on every `makemigrations`; stripping them by hand is churn that the next generated migration undoes.
     - *Where the reasons went:* `DEBUG` is read as an optional string because docker-compose passes `DEBUG: ${DEBUG}`, an empty string when the variable is unset; list settings use `NoDecode` because the value is a plain comma-separated string, not JSON; emails are matched case-insensitively because rows created before normalisation kept the capitals of their domain (decision 9).
+
+13. **Subagents run on the strongest model (Opus 5.5).**
+    - *Why:* a review or research subagent starts with a fresh context and is trusted to find what the main session missed; a weaker model there makes the check cheaper but less useful.
+    - *Changed:* `model: opus` in `.claude/agents/reviewer.md`; a rule in `CLAUDE.md` for every other subagent.
