@@ -77,3 +77,14 @@ Each entry: date, decision, why, what changed. Newest at the bottom.
       shows "used in N plans", the API answers 409) instead of silently disappearing from every user's plans;
       per-set history in PR 3 depends on that.
     - *Privacy:* the exercise detail page lists only the viewer's own plans.
+
+## 2026-11-11 — agent-first working rules
+
+11. **Work by slices with a spec, an invariants list, a read-only reviewer and rules enforced by tests, as in `helpdesk-ai-drafts`.**
+    - *Why:* the repository is a portfolio piece that must show how it was built; rules that a test enforces do not depend on anyone remembering them.
+    - *Changed:* `CLAUDE.md`; `.claude/` with the `reviewer` subagent, a read-only Bash hook and the skills `spec-slice`, `invariants-check`, `report`; SPEC gets Invariants (I1-I9) and Slices (S0-S8); `tests/test_no_comments.py`, `tests/test_repositories_hold_no_logic.py` and `tests/test_reviewer_readonly_hook.py`.
+    - *Differences from helpdesk:* commits carry no `Co-Authored-By` trailer. The agent stages by explicit path and commits locally, as in helpdesk; the owner pushes.
+
+12. **The no-comments guard skips `migrations/`.**
+    - *Why:* Django generates migration files with header comments on every `makemigrations`; stripping them by hand is churn that the next generated migration undoes.
+    - *Where the reasons went:* `DEBUG` is read as an optional string because docker-compose passes `DEBUG: ${DEBUG}`, an empty string when the variable is unset; list settings use `NoDecode` because the value is a plain comma-separated string, not JSON; emails are matched case-insensitively because rows created before normalisation kept the capitals of their domain (decision 9).
