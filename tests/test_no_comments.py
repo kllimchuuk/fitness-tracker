@@ -18,9 +18,10 @@ SKIPPED_DIRECTORIES = {
     ".pytest_cache",
     ".ruff_cache",
 }
+CODES = r"[A-Z]+\d+(?:\s*,\s*[A-Z]+\d+)*"
 DIRECTIVE = re.compile(
-    r"#\s*(?:noqa(?::|\s*$)|type:\s*ignore|pragma:\s*no (?:cover|branch)|fmt:\s*(?:on|off|skip)"
-    r"|isort:\s*(?:on|off|skip)|ruff:\s*(?:noqa|isort|disable|enable))"
+    rf"#\s*(?:noqa(?::\s*{CODES})?|type:\s*ignore(?:\[[\w,\s-]+\])?|pragma:\s*no (?:cover|branch)"
+    rf"|fmt:\s*(?:on|off|skip)|isort:\s*(?:on|off|skip)|ruff:\s*(?:noqa(?::\s*{CODES})?|isort:\s*skip_file))\s*"
 )
 
 
@@ -44,7 +45,7 @@ def test_python_code_has_no_comments(path: Path) -> None:
     found = [
         f"line {token.start[0]}: {token.string}"
         for token in tokenize.generate_tokens(io.StringIO(path.read_text()).readline)
-        if token.type == tokenize.COMMENT and not token.string.startswith("#!") and not DIRECTIVE.match(token.string)
+        if token.type == tokenize.COMMENT and not token.string.startswith("#!") and not DIRECTIVE.fullmatch(token.string)
     ]
 
     assert found == []
@@ -58,11 +59,17 @@ def test_python_code_has_no_comments(path: Path) -> None:
         ("# type: ignore[attr-defined]", True),
         ("# pragma: no cover", True),
         ("# fmt: off", True),
+        ("# noqa: E501, F401", True),
+        ("# isort: skip", True),
         ("# pragmatically chosen", False),
+        ("# type: ignored because the ORM returns Any", False),
+        ("# fmt: offset by one", False),
+        ("# pragma: no cover since the branch is unreachable", False),
+        ("# noqa: the reason is X", False),
         ("# noqa-free on purpose", False),
         ("# type: because the ORM returns Any", False),
         ("# explains why", False),
     ],
 )
 def test_only_real_tool_directives_are_allowed(comment: str, allowed: bool) -> None:
-    assert bool(DIRECTIVE.match(comment)) is allowed
+    assert bool(DIRECTIVE.fullmatch(comment)) is allowed

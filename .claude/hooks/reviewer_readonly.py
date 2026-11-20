@@ -14,7 +14,7 @@ import sys
 
 BLOCK = "Blocked by the reviewer read-only hook"
 
-SHELL_SYNTAX = re.compile(r"[;&<>`\\$\n\r]")
+SHELL_SYNTAX = re.compile(r"[;&<>`\\$\n\r{}()*?\[\]!]|(?:^|\s)~")
 FILTERS = re.compile(r"(?:head|tail)(?: -n ?\d+| -\d+)?|wc(?: -[lwc])?|sort|uniq(?: -c)?")
 
 ENV_PREFIX = "DB_HOST=localhost "
@@ -108,6 +108,8 @@ def check_pytest(tokens: list[str]) -> None:
     for argument in tokens:
         if skip:
             skip = False
+        elif argument.startswith("@"):
+            deny(f"argument not allowed: {argument!r}")
         elif argument in PYTEST_VALUE_FLAGS:
             skip = True
         elif (
