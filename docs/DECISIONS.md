@@ -77,3 +77,23 @@ Each entry: date, decision, why, what changed. Newest at the bottom.
       shows "used in N plans", the API answers 409) instead of silently disappearing from every user's plans;
       per-set history in PR 3 depends on that.
     - *Privacy:* the exercise detail page lists only the viewer's own plans.
+
+## 2026-11-11 — agent-first working rules
+
+11. **Work by slices with a spec, an invariants list, a read-only reviewer and rules enforced by tests, as in `helpdesk-ai-drafts`.**
+    - *Why:* the repository is a portfolio piece that must show how it was built; rules that a test enforces do not depend on anyone remembering them.
+    - *Changed:* `CLAUDE.md`; `.claude/` with the `reviewer` subagent, a read-only Bash hook and the skills `spec-slice`, `invariants-check`, `report`; SPEC gets Invariants (I1-I9) and Slices (S0-S8); `tests/test_no_comments.py`, `tests/test_repositories_hold_no_logic.py` and `tests/test_reviewer_readonly_hook.py`.
+    - *Differences from helpdesk:* commits carry no `Co-Authored-By` trailer. The agent stages by explicit path and commits locally, as in helpdesk; the owner pushes.
+
+12. **The no-comments guard skips `migrations/`.**
+    - *Why:* Django generates migration files with header comments on every `makemigrations`; stripping them by hand is churn that the next generated migration undoes.
+    - *Where the reasons went:* `env_ignore_empty=True` makes an empty variable count as unset, because docker-compose passes `DEBUG: ${DEBUG}`, an empty string when the variable is unset, and `DEBUG` stays a real `bool`; list settings use `NoDecode` because the value is a plain comma-separated string, not JSON; emails are matched case-insensitively because rows created before normalisation kept the capitals of their domain (decision 9).
+
+13. **Subagents run on the strongest model (Opus 5.5).**
+    - *Why:* a review or research subagent starts with a fresh context and is trusted to find what the main session missed; a weaker model there makes the check cheaper but less useful.
+    - *Changed:* `model: opus` in `.claude/agents/reviewer.md`; a rule in `CLAUDE.md` for every other subagent.
+
+14. **The reviewer's Bash hook is a per-command allowlist of flags, and fails closed.**
+    - *Why:* the first version denied a list of dangerous flags, which stuck short options (`-Orm`, `-oout.txt`), abbreviated long options (`--open=`, `--untrack`) and options that write (`--log-file`, `--pastebin`) walked past. The reviewer has no Write tool, so the hook is the only barrier against injected text in the repository.
+    - *Changed:* every command has the flags it may take, nothing else; `ruff format` is checked on parsed tokens, not the raw string; `docker compose` is limited to `ps` and `config --quiet|--services|--no-interpolate` because plain `config` prints secrets from `.env`; `pytest` needs `--tb=short|line|no` because a long traceback prints the database DSN with its password; `DB_HOST=localhost` is the one allowed environment prefix; an unreadable call or an exception in the hook blocks instead of passing. In `.claude/settings.json` the agent may `git add` and `git commit -m` (it never pushes), so the deny rules carry the protection: the exact spellings of `git add .`, `-A`, `-f`, `git branch -D`, `git switch -C`, `git commit --amend` and `docker compose down|run|exec`, plus mid-pattern forms such as `git add * -f*` for reordered flags. Whether the installed Claude Code honours `*` in the middle of a rule is not verified; if it does not, `git add -v -f .env` is the known gap, and `.env` is also ignored by git. The hook also rejects `{ } ( ) * ? [ ] !` and a leading `~`, because the shell expands them after the hook has approved the text, and pytest `@file` arguments, which load options from a file. If `python3` is missing the hook exits with 127, which Claude Code does not treat as a block; CI runs the hook tests, so a broken script is caught there.
+    - *Also:* `tests/test_no_comments.py` scans every Python file outside `migrations/` and only accepts real tool directives; `tests/test_repositories_hold_no_logic.py` rejects `try` and also finds nested or `repositories/` modules.

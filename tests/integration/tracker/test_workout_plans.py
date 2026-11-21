@@ -25,7 +25,7 @@ class TestWorkoutPlanListView:
     def test_list_shows_only_user_plans(self, auth_client, user):
         WorkoutPlanFactory(creator=user)
         WorkoutPlanFactory(creator=user)
-        WorkoutPlanFactory()  # other user's plan
+        WorkoutPlanFactory()
         response = auth_client.get(self.url)
         assert len(response.context["plans"]) == 2
 

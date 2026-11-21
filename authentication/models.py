@@ -9,7 +9,6 @@ from django.db.models.functions import Lower
 
 class UserManager(BaseUserManager["User"]):
     def get_by_natural_key(self, username: str | None) -> "User":
-        # emails stored before normalisation kept their capitals, so log in case-insensitively
         return self.get(email__iexact=username)
 
     def create_user(self, email: str, password: Optional[str] = None, **extra_fields: Any) -> "User":

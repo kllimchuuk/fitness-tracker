@@ -23,7 +23,6 @@ class Exercise(models.Model):
     name = models.CharField(max_length=256)
     type = models.CharField(max_length=256)
     description = models.TextField()
-    # null = system exercise, managed by staff only
     owner = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         null=True,

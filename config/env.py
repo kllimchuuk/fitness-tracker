@@ -17,13 +17,11 @@ class Env(BaseSettings):
     model_config = SettingsConfigDict(
         env_file=".env",
         extra="ignore",
-        # docker-compose passes `DEBUG: ${DEBUG}`, which is an empty string when the variable is unset
         env_ignore_empty=True,
     )
 
     secret_key: SecretStr
     debug: bool = False
-    # NoDecode: the value is a plain comma-separated string, not JSON
     allowed_hosts: Annotated[list[str], NoDecode] = []
 
     db_name: str
