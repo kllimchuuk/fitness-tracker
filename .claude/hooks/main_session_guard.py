@@ -20,23 +20,56 @@ BLOCK = "Blocked by the main-session guard"
 PUNCTUATION = ";&|<>()\n"
 SECRET_FILE = re.compile(r"(?:^|[/:=])\.env(?!\.example$)", re.IGNORECASE)
 GLOB_CHARS = re.compile(r"[*?\[]")
-PIPE_TO_SHELL = re.compile(r"\|&?\s*(?:(?:sudo|env|command|exec)\s+(?:-\S+\s+)*)*(?:bash|sh|zsh|dash)\b")
+SHELL_NAMES = "bash|sh|zsh|dash|ksh|tcsh"
+PIPE_TO_SHELL = re.compile(rf"\|&?\s*(?:(?:sudo|env|command|exec)\s+(?:-\S+\s+)*)*[\"']?(?:\S*/)?(?:{SHELL_NAMES})[\"']?(?:\s|$)")
+PROCESS_TO_SHELL = re.compile(rf"\b(?:{SHELL_NAMES})\s+<\(")
+LINE_CONTINUATION = re.compile(r"\\\n")
+ARITHMETIC_OPEN = re.compile(r"\(\([^)]*$")
+BRACES = re.compile(r"\{([^{}]*)\}")
+DIGITS = re.compile(r"\d+")
 SUBSTITUTION = re.compile(r"\$\((.*)\)|`([^`]*)`", re.DOTALL)
 GLOB_OR_EXPANSION = re.compile(r"[*?\[\]{}$`~]")
 PARENT_PATH = re.compile(r"(?:^|/)\.\.(?:/|$)")
 ASSIGNMENT = re.compile(r"[A-Za-z_]\w*=")
 MIN_OPTION_LENGTH = 3
 
-WRAPPERS = {"env", "command", "sudo", "nohup", "time", "exec", "builtin"}
-WRAPPER_VALUE_FLAGS = {"-u", "-g", "-C", "-a", "-S", "-h", "-p", "-U", "-n"}
-KEYWORDS = {"{", "}", "!", "if", "then", "else", "elif", "fi", "do", "done", "while", "until", "for", "case", "esac"}
+WRAPPERS = {
+    "env": {"-u"},
+    "sudo": {"-u", "-g", "-C", "-h", "-p", "-U"},
+    "exec": {"-a"},
+    "command": set(),
+    "nohup": set(),
+    "time": set(),
+    "builtin": set(),
+    "noglob": set(),
+}
+KEYWORDS = {
+    "{",
+    "}",
+    "!",
+    "if",
+    "then",
+    "else",
+    "elif",
+    "fi",
+    "do",
+    "done",
+    "while",
+    "until",
+    "for",
+    "case",
+    "esac",
+    "function",
+    "coproc",
+}
 RUNNERS = {"xargs", "find", "watch", "nice", "timeout"}
 HEREDOC = re.compile(r"(?<!<)<<(?!<)-?\s*(?P<quote>['\"]?)(?P<word>[\w-]+)(?P=quote)")
 INTERPRETERS = re.compile(r"\b(?:bash|sh|zsh|dash|eval|source)\b")
 RISKY_LINE = re.compile(r"(?:^|[\s;&|(])(?:git|docker)\s")
-SHELLS = {"bash", "sh", "zsh", "dash"}
+SHELLS = set(SHELL_NAMES.split("|"))
+BODY_RUNNERS = SHELLS | {"eval", "source", "."}
 
-GIT_GLOBAL_WITH_VALUE = {"-C", "-c", "--git-dir", "--work-tree", "--namespace", "--exec-path"}
+GIT_GLOBAL_WITH_VALUE = {"-C", "-c", "--git-dir", "--work-tree", "--namespace", "--exec-path", "--attr-source"}
 GIT_FORCE_LONG = ("--force", "--force-with-lease", "--force-if-includes", "--discard-changes", "--force-create")
 GIT_DENIED_SUBCOMMANDS = {
     "push": "the owner pushes",
@@ -59,7 +92,7 @@ GIT_ADD_DENIED_LONG = (
     "--no-ignore-removal",
 )
 GIT_ADD_DENIED_SHORT = set("Aufpie")
-GIT_COMMIT_DENIED_LONG = ("--amend", "--all", "--no-verify")
+GIT_COMMIT_DENIED_LONG = ("--amend", "--all", "--no-verify", "--pathspec-from-file")
 GIT_COMMIT_DENIED_SHORT = set("an")
 GIT_COMMIT_VALUE_SHORT = set("mFcC")
 GIT_COMMIT_VALUE_LONG = {
@@ -75,7 +108,7 @@ GIT_COMMIT_VALUE_LONG = {
     "--squash",
     "--trailer",
 }
-GIT_FORCE_SHORT_SUBCOMMANDS = {"branch": set("DfM"), "switch": set("fC"), "checkout": set("fB")}
+GIT_FORCE_SHORT_SUBCOMMANDS = {"branch": set("DdfM"), "switch": set("fC"), "checkout": set("fB")}
 
 DOCKER_COMPOSE_DENIED = {"down", "run", "exec", "rm", "kill"}
 DOCKER_DENIED = {"rm", "rmi", "volume", "system", "run", "exec", "kill"}
@@ -105,18 +138,29 @@ def short_letters(argument: str) -> set[str]:
     return set()
 
 
-def split_commands(command: str) -> list[list[str]]:
+def split_commands(command: str) -> tuple[list[list[str]], list[str]]:
     lexer = shlex.shlex(command, posix=True, punctuation_chars=PUNCTUATION)
     lexer.whitespace_split = True
     lexer.whitespace = " \t\r"
     lexer.commenters = ""
     commands: list[list[str]] = [[]]
-    for token in lexer:
-        if all(character in PUNCTUATION for character in token):
+    herestrings: list[str] = []
+    tokens = iter(lexer)
+    for token in tokens:
+        operator = all(character in PUNCTUATION for character in token)
+        if operator and token == "<<<":
+            herestrings.append(next(tokens, ""))
+        elif operator and ("<" in token or ">" in token) and "(" not in token and ")" not in token:
+            target = next(tokens, "")
+            if names_secret_file(target):
+                deny(f"argument names a secrets file: {target!r}")
+            if commands[-1] and DIGITS.fullmatch(commands[-1][-1]):
+                commands[-1].pop()
+        elif operator:
             commands.append([])
         else:
             commands[-1].append(token)
-    return [tokens for tokens in commands if tokens]
+    return [group for group in commands if group], herestrings
 
 
 def check_add(arguments: list[str], cwd: str) -> None:
@@ -180,16 +224,28 @@ def check_force(subcommand: str, arguments: list[str]) -> None:
         deny("deleting branches is not allowed")
 
 
-def check_git(tokens: list[str], cwd: str) -> None:
+def is_config_that_rewrites_commands(text: str) -> bool:
+    lowered = text.lower()
+    return lowered.startswith("alias.") or "rebase" in lowered
+
+
+def git_subcommand_index(tokens: list[str], cwd: str) -> tuple[int, str]:
     index = 1
     while index < len(tokens) and tokens[index].startswith("-"):
         option = tokens[index]
         value = tokens[index + 1] if index + 1 < len(tokens) else ""
-        if option.startswith("--config-env") or (option == "-c" and value.lower().startswith("alias.")):
-            deny("git aliases are not allowed")
-        if option.lower().startswith("-calias."):
-            deny("git aliases are not allowed")
+        if option.startswith("--config-env") or (option == "-c" and is_config_that_rewrites_commands(value)):
+            deny("git aliases and rebase settings are not allowed")
+        if option.lower().startswith("-c") and is_config_that_rewrites_commands(option[2:]):
+            deny("git aliases and rebase settings are not allowed")
+        if option == "-C":
+            cwd = os.path.join(cwd, value)
         index += 2 if option in GIT_GLOBAL_WITH_VALUE else 1
+    return index, cwd
+
+
+def check_git(tokens: list[str], cwd: str) -> None:
+    index, cwd = git_subcommand_index(tokens, cwd)
     subcommand = tokens[index] if index < len(tokens) else ""
     arguments = tokens[index + 1 :]
     if subcommand == "stage":
@@ -201,8 +257,8 @@ def check_git(tokens: list[str], cwd: str) -> None:
         check_add(arguments, cwd)
     elif subcommand == "commit":
         check_commit(arguments)
-    elif subcommand == "config" and any(argument.lower().startswith("alias.") for argument in arguments):
-        deny("git aliases are not allowed")
+    elif subcommand == "config" and any(is_config_that_rewrites_commands(argument) for argument in arguments):
+        deny("git aliases and rebase settings are not allowed")
     elif subcommand == "pull" and any(
         long_matches(argument, ("--rebase",)) or "r" in short_letters(argument) for argument in arguments
     ):
@@ -226,11 +282,27 @@ def check_docker(tokens: list[str]) -> None:
             deny(f"docker {word} is not allowed")
 
 
+def expand_braces(text: str, limit: int = 64) -> list[str]:
+    results = [text]
+    while len(results) < limit:
+        expandable = [item for item in results if BRACES.search(item)]
+        if not expandable:
+            break
+        item = expandable[0]
+        match = BRACES.search(item)
+        results.remove(item)
+        results.extend(item[: match.start()] + option + item[match.end() :] for option in match.group(1).split(","))
+    return results
+
+
 def names_secret_file(token: str) -> bool:
-    if SECRET_FILE.search(token):
-        return True
-    name = re.split(r"[/:=]", token)[-1]
-    return name.startswith(".") and bool(GLOB_CHARS.search(name)) and fnmatch.fnmatchcase(".env", name.lower())
+    for candidate in expand_braces(token.replace("$", "")):
+        if SECRET_FILE.search(candidate):
+            return True
+        name = re.split(r"[/:=]", candidate)[-1]
+        if name.startswith(".") and GLOB_CHARS.search(name) and fnmatch.fnmatchcase(".env", name.lower()):
+            return True
+    return False
 
 
 def strip_prefixes(tokens: list[str]) -> list[str]:
@@ -239,12 +311,18 @@ def strip_prefixes(tokens: list[str]) -> list[str]:
             if tokens[0].upper().startswith("GIT_CONFIG"):
                 deny("git configuration through the environment is not allowed")
             tokens = tokens[1:]
+        elif tokens[0] == "function":
+            tokens = tokens[2:]
         elif tokens[0] in KEYWORDS:
             tokens = tokens[1:]
         elif tokens[0] in WRAPPERS:
+            value_flags = WRAPPERS[tokens[0]]
+            wrapper = tokens[0]
             tokens = tokens[1:]
             while tokens and tokens[0].startswith("-"):
-                tokens = tokens[2:] if tokens[0] in WRAPPER_VALUE_FLAGS else tokens[1:]
+                if wrapper == "env" and tokens[0].startswith("-S"):
+                    deny("env -S runs a command string the guard cannot read")
+                tokens = tokens[2:] if tokens[0] in value_flags else tokens[1:]
         else:
             break
     return tokens
@@ -252,14 +330,25 @@ def strip_prefixes(tokens: list[str]) -> list[str]:
 
 def check_runner(tokens: list[str], cwd: str) -> None:
     for position, token in enumerate(tokens):
-        if token in {"git", "docker"}:
+        program = os.path.basename(token)
+        if program in {"git", "docker", "docker-compose", "eval"} | SHELLS:
             following = tokens[position + 1 :]
-            if not [word for word in following if not word.startswith("-")]:
-                deny("the subcommand of git or docker must be written out, not piped in")
-            if "add" in following[:3]:
-                deny("git add needs explicit paths, not paths from another command")
+            if program in {"git", "docker", "docker-compose"}:
+                check_runner_target(tokens[position:], following, cwd)
             check_simple(tokens[position:], cwd)
             return
+
+
+def check_runner_target(target: list[str], following: list[str], cwd: str) -> None:
+    if os.path.basename(target[0]) == "git":
+        index, _ = git_subcommand_index(target, cwd)
+        subcommand = target[index] if index < len(target) else ""
+        if not re.fullmatch(r"[a-z][a-z-]*", subcommand):
+            deny("the subcommand of git must be written out, not piped in")
+    elif not [word for word in following if not word.startswith("-")]:
+        deny("the subcommand of docker must be written out, not piped in")
+    if "add" in following[:3]:
+        deny("git add needs explicit paths, not paths from another command")
 
 
 def check_simple(tokens: list[str], cwd: str) -> None:
@@ -271,7 +360,11 @@ def check_simple(tokens: list[str], cwd: str) -> None:
     if not tokens:
         return
 
-    program = os.path.basename(tokens[0])
+    program = os.path.basename(tokens[0].lstrip("="))
+    if program in {"export", "declare", "typeset", "setenv"} and any(
+        token.upper().startswith("GIT_CONFIG") for token in tokens[1:]
+    ):
+        deny("git configuration through the environment is not allowed")
     if program in SHELLS:
         for position, token in enumerate(tokens[1:-1], start=1):
             if token.startswith("-") and "c" in token and not token.startswith("--"):
@@ -327,6 +420,14 @@ def inside_quote_or_comment(text: str) -> bool:
     return bool(frames) and frames[-1] in {"s", "d"}
 
 
+def executes_body(prefix: str) -> bool:
+    segment = re.split(r"[;&|(]", prefix)[-1]
+    words = [word for word in segment.split() if not ASSIGNMENT.match(word)]
+    while words and (words[0] in WRAPPERS or words[0] in KEYWORDS or words[0].startswith("-")):
+        words = words[1:]
+    return bool(words) and os.path.basename(words[0]) in BODY_RUNNERS
+
+
 def strip_heredocs(command: str, nested: bool) -> tuple[str, str]:
     code: list[str] = []
     expanded: list[str] = []
@@ -343,10 +444,14 @@ def strip_heredocs(command: str, nested: bool) -> tuple[str, str]:
             continue
         code.append(line)
         for match in HEREDOC.finditer(line):
-            before = "\n".join([*code[:-1], line[: match.start()]])
-            if inside_quote_or_comment(before):
+            prefix = line[: match.start()]
+            before = "\n".join([*code[:-1], prefix])
+            if inside_quote_or_comment(before) or prefix.endswith("\\") or ARITHMETIC_OPEN.search(prefix):
                 continue
-            executed = bool(INTERPRETERS.search(line))
+            following = line[match.end() :]
+            if following and following[0] not in " \t;&|<>)":
+                deny("a heredoc delimiter the guard cannot read")
+            executed = executes_body(prefix)
             pending.append((match.group("word"), bool(match.group("quote")), executed))
     if pending and not nested:
         deny("a heredoc is not terminated")
@@ -354,13 +459,14 @@ def strip_heredocs(command: str, nested: bool) -> tuple[str, str]:
 
 
 def check_command(command: str, cwd: str, nested: bool = False) -> None:
+    command = LINE_CONTINUATION.sub("", command)
     code, scanned = strip_heredocs(command, nested)
-    if PIPE_TO_SHELL.search(code):
-        deny("piping text into a shell hides the commands it runs")
+    if PIPE_TO_SHELL.search(code) or PROCESS_TO_SHELL.search(code):
+        deny("feeding text into a shell hides the commands it runs")
     for match in SUBSTITUTION.finditer(scanned):
         check_command(match.group(1) or match.group(2), cwd, nested=True)
     try:
-        commands = split_commands(code)
+        commands, herestrings = split_commands(code)
     except ValueError:
         if not nested:
             deny("unbalanced quotes")
@@ -368,6 +474,8 @@ def check_command(command: str, cwd: str, nested: bool = False) -> None:
             if RISKY_LINE.search(line):
                 deny(f"could not parse a git or docker command inside a substitution: {line!r}")
         return
+    for text in herestrings:
+        check_command(text, cwd, nested=True)
     for tokens in commands:
         check_simple(tokens, cwd)
 
