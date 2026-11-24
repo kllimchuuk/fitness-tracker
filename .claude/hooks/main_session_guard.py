@@ -8,6 +8,7 @@ flags, including abbreviated long options. Exit code 2 blocks the call; a failur
 itself blocks too. It is defense in depth for an agent that follows CLAUDE.md, not a sandbox.
 """
 
+import fnmatch
 import json
 import os
 import re
@@ -17,7 +18,9 @@ import sys
 BLOCK = "Blocked by the main-session guard"
 
 PUNCTUATION = ";&|<>()\n"
-SECRET_FILE = re.compile(r"(?:^|[/:=])\.env(?!\.example$)")
+SECRET_FILE = re.compile(r"(?:^|[/:=])\.env(?!\.example$)", re.IGNORECASE)
+GLOB_CHARS = re.compile(r"[*?\[]")
+PIPE_TO_SHELL = re.compile(r"\|&?\s*(?:(?:sudo|env|command|exec)\s+(?:-\S+\s+)*)*(?:bash|sh|zsh|dash)\b")
 SUBSTITUTION = re.compile(r"\$\((.*)\)|`([^`]*)`", re.DOTALL)
 GLOB_OR_EXPANSION = re.compile(r"[*?\[\]{}$`~]")
 PARENT_PATH = re.compile(r"(?:^|/)\.\.(?:/|$)")
@@ -25,15 +28,26 @@ ASSIGNMENT = re.compile(r"[A-Za-z_]\w*=")
 MIN_OPTION_LENGTH = 3
 
 WRAPPERS = {"env", "command", "sudo", "nohup", "time", "exec", "builtin"}
+WRAPPER_VALUE_FLAGS = {"-u", "-g", "-C", "-a", "-S", "-h", "-p", "-U", "-n"}
+KEYWORDS = {"{", "}", "!", "if", "then", "else", "elif", "fi", "do", "done", "while", "until", "for", "case", "esac"}
 RUNNERS = {"xargs", "find", "watch", "nice", "timeout"}
-HEREDOC = re.compile(r"(?<!<)<<(?!<)-?\s*(?P<quote>['\"]?)(?P<word>\w+)(?P=quote)")
-INTERPRETERS = re.compile(r"\b(?:bash|sh|zsh|dash|python3?|eval|source)\b")
+HEREDOC = re.compile(r"(?<!<)<<(?!<)-?\s*(?P<quote>['\"]?)(?P<word>[\w-]+)(?P=quote)")
+INTERPRETERS = re.compile(r"\b(?:bash|sh|zsh|dash|eval|source)\b")
 RISKY_LINE = re.compile(r"(?:^|[\s;&|(])(?:git|docker)\s")
 SHELLS = {"bash", "sh", "zsh", "dash"}
 
 GIT_GLOBAL_WITH_VALUE = {"-C", "-c", "--git-dir", "--work-tree", "--namespace", "--exec-path"}
-GIT_FORCE_LONG = ("--force", "--force-with-lease", "--force-if-includes", "--discard-changes")
-GIT_DENIED_SUBCOMMANDS = {"push": "the owner pushes", "reset": "no reset", "rebase": "no rebase", "clean": "no clean"}
+GIT_FORCE_LONG = ("--force", "--force-with-lease", "--force-if-includes", "--discard-changes", "--force-create")
+GIT_DENIED_SUBCOMMANDS = {
+    "push": "the owner pushes",
+    "send-pack": "the owner pushes",
+    "subtree": "subtree can push",
+    "reset": "no reset",
+    "update-ref": "it rewrites refs like reset",
+    "filter-branch": "it rewrites history",
+    "rebase": "no rebase",
+    "clean": "no clean",
+}
 GIT_ADD_DENIED_LONG = (
     "--all",
     "--force",
@@ -48,6 +62,19 @@ GIT_ADD_DENIED_SHORT = set("Aufpie")
 GIT_COMMIT_DENIED_LONG = ("--amend", "--all", "--no-verify")
 GIT_COMMIT_DENIED_SHORT = set("an")
 GIT_COMMIT_VALUE_SHORT = set("mFcC")
+GIT_COMMIT_VALUE_LONG = {
+    "--message",
+    "--file",
+    "--reuse-message",
+    "--reedit-message",
+    "--author",
+    "--date",
+    "--cleanup",
+    "--template",
+    "--fixup",
+    "--squash",
+    "--trailer",
+}
 GIT_FORCE_SHORT_SUBCOMMANDS = {"branch": set("DfM"), "switch": set("fC"), "checkout": set("fB")}
 
 DOCKER_COMPOSE_DENIED = {"down", "run", "exec", "rm", "kill"}
@@ -115,22 +142,29 @@ def check_add_path(path: str, cwd: str) -> None:
         deny(f"git add needs file paths, {path!r} is a directory")
 
 
+def short_cluster_takes_next_value(argument: str) -> bool:
+    letters = argument[1:]
+    for position, letter in enumerate(letters):
+        if letter in GIT_COMMIT_DENIED_SHORT:
+            deny(f"git commit option not allowed: {argument!r}")
+        if letter in GIT_COMMIT_VALUE_SHORT:
+            return position == len(letters) - 1
+    return False
+
+
 def check_commit(arguments: list[str]) -> None:
     skip = False
     for argument in arguments:
         if skip:
             skip = False
-        elif argument == "--":
-            return
-        elif argument.startswith("--"):
+        elif argument.startswith("--") and argument != "--":
             if long_matches(argument, GIT_COMMIT_DENIED_LONG):
                 deny(f"git commit option not allowed: {argument!r}")
-            skip = argument in {"--message", "--file", "--reuse-message", "--reedit-message"}
+            skip = argument in GIT_COMMIT_VALUE_LONG
+        elif argument.startswith("-") and argument != "--" and len(argument) > 1:
+            skip = short_cluster_takes_next_value(argument)
         else:
-            letters = short_letters(argument)
-            if letters & GIT_COMMIT_DENIED_SHORT:
-                deny(f"git commit option not allowed: {argument!r}")
-            skip = argument[-1:] in GIT_COMMIT_VALUE_SHORT and bool(letters)
+            deny(f"git commit takes no paths, stage them first: {argument!r}")
 
 
 def check_force(subcommand: str, arguments: list[str]) -> None:
@@ -149,9 +183,17 @@ def check_force(subcommand: str, arguments: list[str]) -> None:
 def check_git(tokens: list[str], cwd: str) -> None:
     index = 1
     while index < len(tokens) and tokens[index].startswith("-"):
-        index += 2 if tokens[index] in GIT_GLOBAL_WITH_VALUE else 1
+        option = tokens[index]
+        value = tokens[index + 1] if index + 1 < len(tokens) else ""
+        if option.startswith("--config-env") or (option == "-c" and value.lower().startswith("alias.")):
+            deny("git aliases are not allowed")
+        if option.lower().startswith("-calias."):
+            deny("git aliases are not allowed")
+        index += 2 if option in GIT_GLOBAL_WITH_VALUE else 1
     subcommand = tokens[index] if index < len(tokens) else ""
     arguments = tokens[index + 1 :]
+    if subcommand == "stage":
+        subcommand = "add"
 
     if subcommand in GIT_DENIED_SUBCOMMANDS:
         deny(f"git {subcommand} is not allowed ({GIT_DENIED_SUBCOMMANDS[subcommand]})")
@@ -159,8 +201,12 @@ def check_git(tokens: list[str], cwd: str) -> None:
         check_add(arguments, cwd)
     elif subcommand == "commit":
         check_commit(arguments)
-    elif subcommand == "config" and any(argument.startswith("alias.") for argument in arguments):
+    elif subcommand == "config" and any(argument.lower().startswith("alias.") for argument in arguments):
         deny("git aliases are not allowed")
+    elif subcommand == "pull" and any(
+        long_matches(argument, ("--rebase",)) or "r" in short_letters(argument) for argument in arguments
+    ):
+        deny("git pull --rebase is not allowed")
     check_force(subcommand, arguments)
 
 
@@ -168,6 +214,9 @@ def check_docker(tokens: list[str]) -> None:
     words = [token for token in tokens[1:] if not token.startswith("-")]
     if "compose" in words:
         rest = words[words.index("compose") + 1 :]
+        denied = DOCKER_COMPOSE_DENIED
+    elif os.path.basename(tokens[0]) == "docker-compose":
+        rest = words
         denied = DOCKER_COMPOSE_DENIED
     else:
         rest = words
@@ -177,20 +226,48 @@ def check_docker(tokens: list[str]) -> None:
             deny(f"docker {word} is not allowed")
 
 
-def check_simple(tokens: list[str], cwd: str) -> None:
-    for token in tokens:
-        if SECRET_FILE.search(token):
-            deny(f"argument names a secrets file: {token!r}")
+def names_secret_file(token: str) -> bool:
+    if SECRET_FILE.search(token):
+        return True
+    name = re.split(r"[/:=]", token)[-1]
+    return name.startswith(".") and bool(GLOB_CHARS.search(name)) and fnmatch.fnmatchcase(".env", name.lower())
 
+
+def strip_prefixes(tokens: list[str]) -> list[str]:
     while tokens:
         if ASSIGNMENT.match(tokens[0]):
+            if tokens[0].upper().startswith("GIT_CONFIG"):
+                deny("git configuration through the environment is not allowed")
+            tokens = tokens[1:]
+        elif tokens[0] in KEYWORDS:
             tokens = tokens[1:]
         elif tokens[0] in WRAPPERS:
             tokens = tokens[1:]
             while tokens and tokens[0].startswith("-"):
-                tokens = tokens[1:]
+                tokens = tokens[2:] if tokens[0] in WRAPPER_VALUE_FLAGS else tokens[1:]
         else:
             break
+    return tokens
+
+
+def check_runner(tokens: list[str], cwd: str) -> None:
+    for position, token in enumerate(tokens):
+        if token in {"git", "docker"}:
+            following = tokens[position + 1 :]
+            if not [word for word in following if not word.startswith("-")]:
+                deny("the subcommand of git or docker must be written out, not piped in")
+            if "add" in following[:3]:
+                deny("git add needs explicit paths, not paths from another command")
+            check_simple(tokens[position:], cwd)
+            return
+
+
+def check_simple(tokens: list[str], cwd: str) -> None:
+    for token in tokens:
+        if names_secret_file(token):
+            deny(f"argument names a secrets file: {token!r}")
+
+    tokens = strip_prefixes(tokens)
     if not tokens:
         return
 
@@ -199,17 +276,55 @@ def check_simple(tokens: list[str], cwd: str) -> None:
         for position, token in enumerate(tokens[1:-1], start=1):
             if token.startswith("-") and "c" in token and not token.startswith("--"):
                 check_command(tokens[position + 1], cwd)
+    elif program == "eval":
+        check_command(" ".join(tokens[1:]), cwd)
+    elif program in {"source", "."}:
+        deny("sourcing a file hides the commands it runs")
     elif program in RUNNERS:
-        for position, token in enumerate(tokens):
-            if token in {"git", "docker"}:
-                if "add" in tokens[position + 1 : position + 4]:
-                    deny("git add needs explicit paths, not paths from another command")
-                check_simple(tokens[position:], cwd)
-                break
+        check_runner(tokens, cwd)
     elif program == "git":
         check_git(tokens, cwd)
-    elif program == "docker":
+    elif program in {"docker", "docker-compose"}:
         check_docker(tokens)
+
+
+def inside_quote_or_comment(text: str) -> bool:
+    frames: list[str] = []
+    depths: list[int] = []
+    index = 0
+    while index < len(text):
+        character = text[index]
+        mode = frames[-1] if frames else "n"
+        if mode == "s":
+            if character == "'":
+                frames.pop()
+        elif mode == "d":
+            if character == "\\":
+                index += 1
+            elif character == '"':
+                frames.pop()
+            elif text.startswith("$(", index):
+                frames.append("c")
+                depths.append(0)
+                index += 1
+        elif character == "\\":
+            index += 1
+        elif character == "'":
+            frames.append("s")
+        elif character == '"':
+            frames.append("d")
+        elif character == "#" and (index == 0 or text[index - 1] in " \t\n;&|("):
+            return True
+        elif mode == "c" and character == "(":
+            depths[-1] += 1
+        elif mode == "c" and character == ")":
+            if depths[-1] == 0:
+                frames.pop()
+                depths.pop()
+            else:
+                depths[-1] -= 1
+        index += 1
+    return bool(frames) and frames[-1] in {"s", "d"}
 
 
 def strip_heredocs(command: str, nested: bool) -> tuple[str, str]:
@@ -228,7 +343,10 @@ def strip_heredocs(command: str, nested: bool) -> tuple[str, str]:
             continue
         code.append(line)
         for match in HEREDOC.finditer(line):
-            executed = bool(INTERPRETERS.search(line[: match.start()]))
+            before = "\n".join([*code[:-1], line[: match.start()]])
+            if inside_quote_or_comment(before):
+                continue
+            executed = bool(INTERPRETERS.search(line))
             pending.append((match.group("word"), bool(match.group("quote")), executed))
     if pending and not nested:
         deny("a heredoc is not terminated")
@@ -237,6 +355,8 @@ def strip_heredocs(command: str, nested: bool) -> tuple[str, str]:
 
 def check_command(command: str, cwd: str, nested: bool = False) -> None:
     code, scanned = strip_heredocs(command, nested)
+    if PIPE_TO_SHELL.search(code):
+        deny("piping text into a shell hides the commands it runs")
     for match in SUBSTITUTION.finditer(scanned):
         check_command(match.group(1) or match.group(2), cwd, nested=True)
     try:
