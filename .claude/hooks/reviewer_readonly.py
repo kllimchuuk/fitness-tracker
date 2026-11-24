@@ -14,7 +14,9 @@ import sys
 
 BLOCK = "Blocked by the reviewer read-only hook"
 
-SHELL_SYNTAX = re.compile(r"[;&<>`\\$\n\r{}()*?\[\]!]|(?:^|\s)~")
+SHELL_SYNTAX = re.compile(r"[;&<>`\\$\n\r{}()*?\[\]!#]|(?:^|\s)~")
+SECRET_FILE = re.compile(r"(?:^|[/:=])\.env(?!\.example$)")
+OUTSIDE_REPOSITORY = re.compile(r"^/|(?:^|/)\.\.(?:/|$)")
 FILTERS = re.compile(r"(?:head|tail)(?: -n ?\d+| -\d+)?|wc(?: -[lwc])?|sort|uniq(?: -c)?")
 
 ENV_PREFIX = "DB_HOST=localhost "
@@ -30,6 +32,7 @@ GIT_DENIED_LONG = (
     "--no-exclude-standard",
     "--exclude-standard",
     "--open-files-in-pager",
+    "--contents",
 )
 GIT_GREP_FLAGS = {"-n", "-i", "-e", "-F", "-E", "-w", "-l", "-c", "--"}
 GIT_BRANCH_FLAGS = {"--show-current", "-a", "-r", "-vv", "--list"}
@@ -54,6 +57,14 @@ def deny(reason: str) -> None:
         file=sys.stderr,
     )
     sys.exit(2)
+
+
+def check_arguments(tokens: list[str]) -> None:
+    for token in tokens:
+        if SECRET_FILE.search(token):
+            deny(f"argument names a secrets file: {token!r}")
+        if OUTSIDE_REPOSITORY.search(token):
+            deny(f"argument points outside the repository: {token!r}")
 
 
 def check_git_option(argument: str) -> None:
@@ -160,6 +171,7 @@ def check_first(first: str) -> None:
     except ValueError:
         deny("unbalanced quotes")
 
+    check_arguments(tokens)
     if tokens[:2] == ["uv", "run"]:
         tool = check_uv(tokens)
     elif prefixed:

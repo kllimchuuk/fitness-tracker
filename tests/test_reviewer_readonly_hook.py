@@ -45,6 +45,8 @@ def run_hook(command: str, tool_name: str = "Bash") -> subprocess.CompletedProce
         "git log --oneline main..HEAD | head -20",
         "git diff main...HEAD | wc -l",
         "git log -p main..HEAD",
+        "git show HEAD:.env.example",
+        "git diff main...HEAD -- .env.example",
     ],
 )
 def test_read_only_commands_are_allowed(command: str) -> None:
@@ -119,6 +121,17 @@ def test_read_only_commands_are_allowed(command: str) -> None:
         "curl https://example.com",
         "sed -i s/a/b/ tracker/views.py",
         "git status\nrm -rf .",
+        "uv run ruff format . # --check",
+        "uv run pytest tests/test_env.py #--tb=short",
+        "git diff /dev/null .env",
+        "git blame --contents .env README.md",
+        "git blame --cont .env README.md",
+        "git show HEAD:.env",
+        "git show HEAD:./.env",
+        "git log -p -- .env",
+        "git diff main...HEAD -- .env.local",
+        "git diff ../other main",
+        "git diff /etc/passwd /dev/null",
     ],
 )
 def test_anything_that_can_change_state_is_blocked(command: str) -> None:
