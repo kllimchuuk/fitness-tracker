@@ -1,3 +1,5 @@
+from typing import Any
+
 from django import forms
 
 from .models import Exercise
@@ -33,7 +35,7 @@ class ExerciseForm(forms.ModelForm):
             ),
         }
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
         self.fields["primary_muscle"].required = False
         self.fields["equipment"].required = False

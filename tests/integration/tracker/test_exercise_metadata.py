@@ -110,10 +110,12 @@ class TestArchiveExercise:
             add_exercise_set(plan.id, {"exercise_id": owned_exercise.id}, user)
         assert error.value.code == 409
 
-    def test_archived_exercise_already_in_a_plan_keeps_its_set(self, user, plan, owned_exercise):
-        ExerciseSetFactory(workout_plan=plan, exercise=owned_exercise)
+    def test_archived_exercise_already_in_a_plan_can_still_be_updated(self, user, plan, owned_exercise):
+        ExerciseSetFactory(workout_plan=plan, exercise=owned_exercise, reps=10)
         archive_exercise(owned_exercise.id, user)
-        assert plan.exerciseset_set.filter(exercise=owned_exercise).exists()
+        result = add_exercise_set(plan.id, {"exercise_id": owned_exercise.id, "reps": 12}, user)
+        assert result.reps == 12
+        assert plan.exerciseset_set.filter(exercise=owned_exercise).count() == 1
 
     def test_plan_picker_hides_archived(self, auth_client, plan, owned_exercise):
         visible = ExerciseFactory(owner=owned_exercise.owner, name="Visible one")

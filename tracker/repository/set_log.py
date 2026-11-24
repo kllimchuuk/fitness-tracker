@@ -1,4 +1,3 @@
-from abc import ABC
 from abc import abstractmethod
 from typing import Sequence
 
@@ -6,10 +5,11 @@ from django.db.models import Max
 
 from tracker.models import SetLog
 
+from .base import CRUDRepository
 from .base import CRUDRepositorySQLAlchemy
 
 
-class SetLogRepository(ABC):
+class SetLogRepository(CRUDRepository[SetLog]):
     @abstractmethod
     def get_max_set_number(self, session_id: int, exercise_id: int) -> int | None:
         raise NotImplementedError()

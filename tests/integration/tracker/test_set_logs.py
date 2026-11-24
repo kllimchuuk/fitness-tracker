@@ -7,6 +7,7 @@ from tests.factories.tracker_factories import ExerciseFactory
 from tests.factories.tracker_factories import SetLogFactory
 from tests.factories.tracker_factories import WorkoutSessionFactory
 from tracker.models import SetLog
+from tracker.repository.set_log import SetLogRepositoryImpl
 from tracker.service.exceptions import ServiceError
 from tracker.service.set_log import list_set_logs
 from tracker.service.set_log import log_set
@@ -115,6 +116,42 @@ class TestLogSet:
             log_set(active_session.id, self.payload(exercise, **extra), user)
         assert error.value.code == 400
         assert SetLog.objects.count() == 0
+
+    @pytest.mark.parametrize(
+        "extra",
+        [
+            {"weight_kg": float("nan")},
+            {"weight_kg": float("inf")},
+            {"rpe": float("nan")},
+            {"reps": 100000},
+            {"exercise_id": "abc"},
+            {"exercise_id": True},
+            {"exercise_id": 1.5},
+        ],
+    )
+    def test_non_finite_oversized_or_malformed_values_are_400(self, user, active_session, exercise, extra):
+        with pytest.raises(ServiceError) as error:
+            log_set(active_session.id, self.payload(exercise, **extra), user)
+        assert error.value.code == 400
+        assert SetLog.objects.count() == 0
+
+    @pytest.mark.parametrize("extra", [{"rpe": 6}, {"rpe": 10}, {"weight_kg": 0}, {"reps": 1}, {"reps": 1000}])
+    def test_boundary_values_are_accepted(self, user, active_session, exercise, extra):
+        result = log_set(active_session.id, self.payload(exercise, **extra), user)
+        assert result.id
+
+    @pytest.mark.parametrize("field,value", [("rpe", 6), ("rpe", 10), ("weight_kg", 0.0), ("reps", 1)])
+    def test_database_accepts_boundary_values(self, active_session, exercise, field, value):
+        log = SetLogFactory(session=active_session, exercise=exercise, **{field: value})
+        assert getattr(log, field) == value
+
+    def test_concurrent_duplicate_set_number_is_409(self, user, active_session, exercise, monkeypatch):
+        log_set(active_session.id, self.payload(exercise), user)
+        monkeypatch.setattr(SetLogRepositoryImpl, "get_max_set_number", lambda self, session_id, exercise_id: None)
+        with pytest.raises(ServiceError) as error:
+            log_set(active_session.id, self.payload(exercise), user)
+        assert error.value.code == 409
+        assert SetLog.objects.count() == 1
 
     def test_booleans_are_not_numbers(self, user, active_session, exercise):
         with pytest.raises(ServiceError) as error:

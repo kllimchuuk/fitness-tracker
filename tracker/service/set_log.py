@@ -1,3 +1,8 @@
+import math
+
+from django.db import IntegrityError
+from django.db import transaction
+
 from authentication.models import User
 from tracker.repository.session import get_session_repository
 from tracker.repository.set_log import get_set_log_repository
@@ -11,8 +16,15 @@ RPE_MIN = 6
 RPE_MAX = 10
 
 
+MAX_REPS = 1000
+
+
+def is_integer(value: object) -> bool:
+    return isinstance(value, int) and not isinstance(value, bool)
+
+
 def is_number(value: object) -> bool:
-    return isinstance(value, (int, float)) and not isinstance(value, bool)
+    return isinstance(value, (int, float)) and not isinstance(value, bool) and math.isfinite(value)
 
 
 def validate_set_payload(payload: dict) -> None:
@@ -20,13 +32,16 @@ def validate_set_payload(payload: dict) -> None:
     if missing:
         raise ServiceError(f"Missing required fields: {', '.join(missing)}", code=400)
 
+    if not is_integer(payload["exercise_id"]):
+        raise ServiceError("exercise_id must be an integer", code=400)
+
     reps = payload["reps"]
-    if not isinstance(reps, int) or isinstance(reps, bool) or reps < 1:
-        raise ServiceError("reps must be an integer of at least 1", code=400)
+    if not is_integer(reps) or not 1 <= reps <= MAX_REPS:
+        raise ServiceError(f"reps must be an integer from 1 to {MAX_REPS}", code=400)
 
     weight = payload["weight_kg"]
     if not is_number(weight) or weight < 0:
-        raise ServiceError("weight_kg must be a number, zero or more", code=400)
+        raise ServiceError("weight_kg must be a finite number, zero or more", code=400)
 
     rpe = payload.get("rpe")
     if rpe is not None and (not is_number(rpe) or not RPE_MIN <= rpe <= RPE_MAX):
@@ -47,14 +62,18 @@ def log_set(session_id: int, payload: dict, user: User) -> SetLogSchema:
 
     repo = get_set_log_repository()
     top = repo.get_max_set_number(session.id, exercise.id)
-    log = repo.create(
-        session=session,
-        exercise=exercise,
-        set_number=(top or 0) + 1,
-        reps=payload["reps"],
-        weight_kg=float(payload["weight_kg"]),
-        rpe=payload.get("rpe"),
-    )
+    try:
+        with transaction.atomic():
+            log = repo.create(
+                session=session,
+                exercise=exercise,
+                set_number=(top or 0) + 1,
+                reps=payload["reps"],
+                weight_kg=float(payload["weight_kg"]),
+                rpe=payload.get("rpe"),
+            )
+    except IntegrityError:
+        raise ServiceError("Another set was logged at the same time, try again.", code=409)
     return SetLogSchema.model_validate(log)
 
 

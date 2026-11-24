@@ -118,8 +118,12 @@ Each entry: date, decision, why, what changed. Newest at the bottom.
       - `WorkoutSession.duration_minutes` is unchanged: it is still set to 0 at start and computed at finish.
     - *Migration:* `authentication.0006_remove_user_status` and `tracker.0006_set_logs_exercise_metadata_archive`,
       one per app because Django cannot span apps in one file. Data is kept; the status values are dropped.
-    - *Not in this slice:* HTTP routes for logging sets (S2 adds them through Django Ninja); the service
-      `tracker.service.set_log` is what those routes will call.
+    - *Not in this slice:* HTTP routes for logging sets and for archiving or unarchiving an exercise (S2 adds them
+      through Django Ninja, each with its I6 404 and 403 cases); `tracker.service.set_log` and
+      `archive_exercise` / `unarchive_exercise` are what those routes will call. Until then the "archive it
+      instead" message of a refused delete points at an action only the service layer offers.
+    - *Input limits:* `reps` 1 to 1000, `weight_kg` finite and zero or more, `exercise_id` an integer; two
+      concurrent logs of the same set number answer 409 instead of failing with a database error.
 
 
 16. **A token-parsing guard for the main session, and the three known gaps of the reviewer hook closed.**
