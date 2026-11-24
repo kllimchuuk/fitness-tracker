@@ -97,3 +97,27 @@ Each entry: date, decision, why, what changed. Newest at the bottom.
     - *Why:* the first version denied a list of dangerous flags, which stuck short options (`-Orm`, `-oout.txt`), abbreviated long options (`--open=`, `--untrack`) and options that write (`--log-file`, `--pastebin`) walked past. The reviewer has no Write tool, so the hook is the only barrier against injected text in the repository.
     - *Changed:* every command has the flags it may take, nothing else; `ruff format` is checked on parsed tokens, not the raw string; `docker compose` is limited to `ps` and `config --quiet|--services|--no-interpolate` because plain `config` prints secrets from `.env`; `pytest` needs `--tb=short|line|no` because a long traceback prints the database DSN with its password; `DB_HOST=localhost` is the one allowed environment prefix; an unreadable call or an exception in the hook blocks instead of passing. In `.claude/settings.json` the agent may `git add` and `git commit -m` (it never pushes), so the deny rules carry the protection: the exact spellings of `git add .`, `-A`, `-f`, `git branch -D`, `git switch -C`, `git commit --amend` and `docker compose down|run|exec`, plus mid-pattern forms such as `git add * -f*` for reordered flags. Whether the installed Claude Code honours `*` in the middle of a rule is not verified; if it does not, `git add -v -f .env` is the known gap, and `.env` is also ignored by git. The hook also rejects `{ } ( ) * ? [ ] !` and a leading `~`, because the shell expands them after the hook has approved the text, and pytest `@file` arguments, which load options from a file. If `python3` is missing the hook exits with 127, which Claude Code does not treat as a block; CI runs the hook tests, so a broken script is caught there.
     - *Also:* `tests/test_no_comments.py` scans every Python file outside `migrations/` and only accepts real tool directives; `tests/test_repositories_hold_no_logic.py` rejects `try` and also finds nested or `repositories/` modules.
+
+## 2026-11-24 — data model for the coach (S1)
+
+15. **Per-set logs, closed muscle and equipment lists, archived exercises, no `User.status`.**
+    - *Why:* the engine (S3) needs what was actually lifted, not a session duration; a free-text `type` cannot be
+      grouped; an exercise used in a plan or a log could never leave the catalog; `User.status` was a second
+      source of truth next to `is_staff`.
+    - *Rules:*
+      - `SetLog` stores `rpe` from the start because e1RM from reps and weight alone ignores how close to failure
+        a set was; adding the column later would cost another migration. RPE accepts any number from 6 to 10,
+        `null` when unknown.
+      - Muscle and equipment are `TextChoices` on `Exercise`, not tables: the lists are small and closed, so a
+        join would add queries without adding data. `type` is kept as it is; mapping free text to muscles would
+        have been a lossy guess, so existing rows get `other`.
+      - An exercise with logged sets is protected from deletion (409 "archive it instead"). Archiving sets
+        `archived_at`; visibility (I6) is unchanged. Archived exercises are hidden from the plan picker and refused
+        when added to a plan (409); sets already in a plan, and logging in a session, keep working.
+      - `User.status` and the `limit_choices_to` built on it are removed; `is_staff` is the only admin marker.
+      - `WorkoutSession.duration_minutes` is unchanged: it is still set to 0 at start and computed at finish.
+    - *Migration:* `authentication.0006_remove_user_status` and `tracker.0006_set_logs_exercise_metadata_archive`,
+      one per app because Django cannot span apps in one file. Data is kept; the status values are dropped.
+    - *Not in this slice:* HTTP routes for logging sets (S2 adds them through Django Ninja); the service
+      `tracker.service.set_log` is what those routes will call.
+

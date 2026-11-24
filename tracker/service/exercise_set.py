@@ -11,11 +11,18 @@ def add_exercise_set(plan_id: int, payload: dict, user: User) -> ExerciseSetSche
     if "exercise_id" not in payload:
         raise ServiceError("Missing required field: exercise_id", code=400)
 
-    if not Exercise.objects.visible_to(user).filter(id=payload["exercise_id"]).exists():
+    exercise = Exercise.objects.visible_to(user).filter(id=payload["exercise_id"]).first()
+    if exercise is None:
         raise ServiceError(f"Exercise with id {payload['exercise_id']} not found", code=404)
 
     if not WorkoutPlan.objects.filter(id=plan_id, creator=user).exists():
         raise ServiceError(f"Workout plan with id {plan_id} not found", code=404)
+
+    if (
+        exercise.archived_at is not None
+        and not ExerciseSet.objects.filter(workout_plan_id=plan_id, exercise_id=exercise.id).exists()
+    ):
+        raise ServiceError(f"Exercise with id {exercise.id} is archived", code=409)
 
     es, created = ExerciseSet.objects.get_or_create(
         workout_plan_id=plan_id,

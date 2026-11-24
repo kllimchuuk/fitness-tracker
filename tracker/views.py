@@ -179,7 +179,7 @@ class WorkoutPlanDetailView(LoginRequiredMixin, View):
 class WorkoutPlanAddExerciseView(LoginRequiredMixin, View):
     def get(self, request, plan_id: int):
         plan = get_object_or_404(WorkoutPlan, id=plan_id, creator_id=request.user.id)
-        exercises = Exercise.objects.visible_to(request.user).order_by("name")
+        exercises = Exercise.objects.visible_to(request.user).active().order_by("name")
         return render(request, "plans/add_exercise.html", {"plan": plan, "exercises": exercises})
 
     def post(self, request, plan_id: int):

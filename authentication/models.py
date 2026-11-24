@@ -34,12 +34,7 @@ class UserManager(BaseUserManager["User"]):
 
 
 class User(AbstractUser):
-    class Status(models.TextChoices):
-        ADMIN = "ADMIN", "Admin"
-        CUSTOMER = "CUSTOMER", "Customer"
-
     email = models.EmailField(unique=True, verbose_name="Email")
-    status = models.CharField(max_length=16, choices=Status.choices, default=Status.CUSTOMER)
     age = models.PositiveIntegerField(null=True, blank=True, verbose_name="Вік")
     height = models.FloatField(null=True, blank=True, verbose_name="Зріст (см)")
     goal = models.CharField(max_length=256, null=True, blank=True, verbose_name="Мета")

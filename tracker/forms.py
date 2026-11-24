@@ -7,7 +7,7 @@ from .models import WorkoutPlan
 class ExerciseForm(forms.ModelForm):
     class Meta:
         model = Exercise
-        fields = ["name", "type", "description"]
+        fields = ["name", "type", "primary_muscle", "equipment", "description"]
         widgets = {
             "name": forms.TextInput(
                 attrs={
@@ -23,6 +23,8 @@ class ExerciseForm(forms.ModelForm):
                     "required": True,
                 }
             ),
+            "primary_muscle": forms.Select(attrs={"class": "search-input"}),
+            "equipment": forms.Select(attrs={"class": "search-input"}),
             "description": forms.TextInput(
                 attrs={
                     "class": "search-input",
@@ -30,6 +32,17 @@ class ExerciseForm(forms.ModelForm):
                 }
             ),
         }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["primary_muscle"].required = False
+        self.fields["equipment"].required = False
+
+    def clean_primary_muscle(self) -> str:
+        return self.cleaned_data["primary_muscle"] or self.instance.primary_muscle or Exercise.Muscle.OTHER
+
+    def clean_equipment(self) -> str:
+        return self.cleaned_data["equipment"] or self.instance.equipment or Exercise.Equipment.OTHER
 
 
 class WorkoutPlanForm(forms.ModelForm):
