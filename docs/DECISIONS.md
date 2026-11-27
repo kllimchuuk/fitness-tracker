@@ -136,6 +136,6 @@ Each entry: date, decision, why, what changed. Newest at the bottom.
 
 17. **A plan with sessions cannot be deleted (`WorkoutSession.plan` is `PROTECT`).**
     - *Why:* `CASCADE` removed every session of the plan and, through them, every `SetLog`; the engine (S3) reads that history, so deleting an outdated plan silently destroyed it. Same reasoning as `ExerciseSet.exercise` and `SetLog.exercise` (decision 10, 15). The owner approved the option on 2026-11-27.
-    - *Changed:* `tracker.0007_protect_session_plan`; `tracker.service.workout_plan.delete_workout_plan` answers 409 "Workout plan has logged sessions" and the HTML view redirects to the plan with that message. Deleting a user still removes their plans and sessions together.
+    - *Changed:* the `PROTECT` change is part of `tracker.0006_set_logs_exercise_metadata_archive`, because a pull request carries one migration per app; `tracker.service.workout_plan.delete_workout_plan` answers 409 "Workout plan has logged sessions" and the HTML view redirects to the plan with that message. Deleting a user still removes their plans and sessions together.
     - *Also:* `Bash(git rebase:*)` moved from `ask` to `deny` in `.claude/settings.json`, matching the main-session guard; a rebase is done by the owner.
     - *Not in this slice:* archiving a plan; the message does not offer it yet, and S2 decides whether plans get `archived_at` like exercises.
