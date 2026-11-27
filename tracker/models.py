@@ -98,7 +98,7 @@ class WorkoutSession(models.Model):
         COMPLETED = "completed", "Completed"
 
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
-    plan = models.ForeignKey("WorkoutPlan", on_delete=models.PROTECT)
+    plan = models.ForeignKey("WorkoutPlan", on_delete=models.RESTRICT)
     duration_minutes = models.PositiveIntegerField()
     status = models.CharField(max_length=16, choices=Status.choices, default=Status.ACTIVE)
     start_time = models.DateTimeField()
@@ -117,7 +117,7 @@ class ExerciseSet(models.Model):
 
 class SetLog(models.Model):
     session = models.ForeignKey("WorkoutSession", on_delete=models.CASCADE, related_name="set_logs")
-    exercise = models.ForeignKey("Exercise", on_delete=models.PROTECT, related_name="set_logs")
+    exercise = models.ForeignKey("Exercise", on_delete=models.RESTRICT, related_name="set_logs")
     set_number = models.PositiveSmallIntegerField()
     reps = models.PositiveSmallIntegerField()
     weight_kg = models.FloatField()

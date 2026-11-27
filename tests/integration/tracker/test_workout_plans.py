@@ -138,6 +138,13 @@ class TestWorkoutPlanDeleteView:
         response = auth_client.post(self.url(other_plan.id))
         assert response.status_code == 404
 
+    def test_delete_returns_404_for_another_users_plan_with_sessions(self, auth_client):
+        other_plan = WorkoutPlanFactory()
+        WorkoutSessionFactory(plan=other_plan, user=other_plan.creator)
+        response = auth_client.post(self.url(other_plan.id))
+        assert response.status_code == 404
+        assert WorkoutPlan.objects.filter(id=other_plan.id).exists()
+
     def test_delete_keeps_plan_that_has_sessions(self, auth_client, plan, user):
         WorkoutSessionFactory(user=user, plan=plan)
         response = auth_client.post(self.url(plan.id))

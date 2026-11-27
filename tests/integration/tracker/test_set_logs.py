@@ -1,7 +1,7 @@
 import pytest
 from django.db import IntegrityError
 from django.db import transaction
-from django.db.models import ProtectedError
+from django.db.models import RestrictedError
 
 from tests.factories.tracker_factories import ExerciseFactory
 from tests.factories.tracker_factories import SetLogFactory
@@ -45,7 +45,7 @@ class TestSetLogModel:
 
     def test_exercise_with_logs_cannot_be_deleted(self, exercise):
         SetLogFactory(exercise=exercise)
-        with pytest.raises(ProtectedError):
+        with pytest.raises(RestrictedError):
             exercise.delete()
 
     def test_deleting_session_deletes_its_logs(self, active_session, exercise):

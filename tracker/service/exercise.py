@@ -2,6 +2,7 @@ from http import HTTPStatus
 
 from django.db import models
 from django.db.models import ProtectedError
+from django.db.models import RestrictedError
 from django.utils import timezone
 
 from authentication.models import User
@@ -102,7 +103,7 @@ def delete_exercise(exercise_id: int, user: User) -> None:
     exercise = get_manageable_exercise(exercise_id, user)
     try:
         exercise.delete()
-    except ProtectedError:
+    except (ProtectedError, RestrictedError):
         plans = ExerciseSet.objects.filter(exercise=exercise).count()
         if plans:
             raise ServiceError(f"Exercise is used in {plans} plan{'s' if plans != 1 else ''}", code=HTTPStatus.CONFLICT)
