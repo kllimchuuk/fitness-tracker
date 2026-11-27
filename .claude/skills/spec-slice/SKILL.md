@@ -14,7 +14,7 @@ Follow these steps in order. The slice list is in `docs/SPEC.md` (Slices); the r
    - views and API routes -> service -> repository; routes hold no logic;
    - all queries in repositories, repositories hold no logic and take plain arguments;
    - the engine in `agent/engine/` imports no Django and no network client;
-   - one migration per app per pull request: a model change after review goes into that migration, not into a new one (delete it and regenerate while the pull request is open);
+   - exactly one migration per pull request: a model change after review goes into that migration, not into a new one (delete it and regenerate while the pull request is open); if the slice needs schema changes in two apps, split the slice so each pull request touches one;
    - no comments in Python code.
 5. **Check.** `uv run ruff check .`, `uv run ruff format --check .`, `DB_HOST=localhost uv run pytest --no-cov -q`, `uv run python manage.py makemigrations --check --dry-run`. Everything green before handing over.
 6. **Document.** If the change deviates from the SPEC or settles a choice, add the entry to `docs/DECISIONS.md` and edit the SPEC in the same change.

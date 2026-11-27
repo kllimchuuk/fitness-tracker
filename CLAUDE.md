@@ -25,7 +25,7 @@ Invariants (SPEC, Invariants). Never break them; every change must keep a test f
 - Run everything: `docker compose up --build`
 - Tests: `DB_HOST=localhost uv run pytest --no-cov -q` (needs the compose `db` service); the full run with the coverage gate is `DB_HOST=localhost uv run pytest`
 - Lint and format: `uv run ruff check . && uv run ruff format --check .`
-- Migrations: `uv run python manage.py makemigrations --check --dry-run` must report no changes
+- Migrations: `uv run python manage.py makemigrations --check --dry-run` must report no changes; a pull request carries exactly one migration (see `spec-slice`)
 
 ## How we work
 
