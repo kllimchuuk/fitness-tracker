@@ -7,6 +7,7 @@ from factory.django import DjangoModelFactory
 from tests.factories.user_factory import UserFactory
 from tracker.models import Exercise
 from tracker.models import ExerciseSet
+from tracker.models import SetLog
 from tracker.models import WeightTracker
 from tracker.models import WorkoutPlan
 from tracker.models import WorkoutSession
@@ -52,6 +53,18 @@ class WorkoutSessionFactory(DjangoModelFactory):
     status = WorkoutSession.Status.ACTIVE
     start_time = factory.LazyFunction(timezone.now)
     duration_minutes = 0
+
+
+class SetLogFactory(DjangoModelFactory):
+    class Meta:
+        model = SetLog
+
+    session = factory.SubFactory(WorkoutSessionFactory)
+    exercise = factory.SubFactory(ExerciseFactory)
+    set_number = factory.Sequence(lambda n: n + 1)
+    reps = 8
+    weight_kg = 60.0
+    rpe = 8.0
 
 
 class WeightTrackerFactory(DjangoModelFactory):

@@ -18,11 +18,42 @@ class ExerciseQuerySet(models.QuerySet["Exercise"]):
             return self.filter(Q(owner__isnull=True) | Q(owner=user))
         return self.filter(owner__isnull=True)
 
+    def active(self) -> "ExerciseQuerySet":
+        return self.filter(archived_at__isnull=True)
+
 
 class Exercise(models.Model):
+    class Muscle(models.TextChoices):
+        CHEST = "chest", "Chest"
+        BACK = "back", "Back"
+        SHOULDERS = "shoulders", "Shoulders"
+        BICEPS = "biceps", "Biceps"
+        TRICEPS = "triceps", "Triceps"
+        FOREARMS = "forearms", "Forearms"
+        QUADS = "quads", "Quads"
+        HAMSTRINGS = "hamstrings", "Hamstrings"
+        GLUTES = "glutes", "Glutes"
+        CALVES = "calves", "Calves"
+        CORE = "core", "Core"
+        FULL_BODY = "full_body", "Full body"
+        OTHER = "other", "Other"
+
+    class Equipment(models.TextChoices):
+        BARBELL = "barbell", "Barbell"
+        DUMBBELL = "dumbbell", "Dumbbell"
+        MACHINE = "machine", "Machine"
+        CABLE = "cable", "Cable"
+        KETTLEBELL = "kettlebell", "Kettlebell"
+        BAND = "band", "Band"
+        BODYWEIGHT = "bodyweight", "Bodyweight"
+        OTHER = "other", "Other"
+
     name = models.CharField(max_length=256)
     type = models.CharField(max_length=256)
     description = models.TextField()
+    primary_muscle = models.CharField(max_length=16, choices=Muscle.choices, default=Muscle.OTHER)
+    equipment = models.CharField(max_length=16, choices=Equipment.choices, default=Equipment.OTHER)
+    archived_at = models.DateTimeField(null=True, blank=True)
     owner = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         null=True,
@@ -47,21 +78,13 @@ class Exercise(models.Model):
 
 
 class WeightTracker(models.Model):
-    user = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.CASCADE,
-        limit_choices_to=Q(status="CUSTOMER") | Q(status="ADMIN"),
-    )
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     date = models.DateField()
     weight = models.FloatField()
 
 
 class WorkoutPlan(models.Model):
-    creator = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.CASCADE,
-        limit_choices_to=Q(status="CUSTOMER") | Q(status="ADMIN"),
-    )
+    creator = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     name = models.CharField(max_length=256)
     version = models.PositiveIntegerField(default=1)
     description = models.TextField()
@@ -74,12 +97,8 @@ class WorkoutSession(models.Model):
         ACTIVE = "active", "Active"
         COMPLETED = "completed", "Completed"
 
-    user = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.CASCADE,
-        limit_choices_to=Q(status="CUSTOMER") | Q(status="ADMIN"),
-    )
-    plan = models.ForeignKey("WorkoutPlan", on_delete=models.CASCADE)
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    plan = models.ForeignKey("WorkoutPlan", on_delete=models.RESTRICT)
     duration_minutes = models.PositiveIntegerField()
     status = models.CharField(max_length=16, choices=Status.choices, default=Status.ACTIVE)
     start_time = models.DateTimeField()
@@ -94,3 +113,25 @@ class ExerciseSet(models.Model):
 
     class Meta:
         unique_together = ("exercise", "workout_plan")
+
+
+class SetLog(models.Model):
+    session = models.ForeignKey("WorkoutSession", on_delete=models.CASCADE, related_name="set_logs")
+    exercise = models.ForeignKey("Exercise", on_delete=models.RESTRICT, related_name="set_logs")
+    set_number = models.PositiveSmallIntegerField()
+    reps = models.PositiveSmallIntegerField()
+    weight_kg = models.FloatField()
+    rpe = models.FloatField(null=True, blank=True)
+    logged_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ("exercise_id", "set_number")
+        constraints = [
+            models.UniqueConstraint(fields=("session", "exercise", "set_number"), name="setlog_unique_set_number"),
+            models.CheckConstraint(condition=Q(reps__gte=1), name="setlog_reps_positive"),
+            models.CheckConstraint(condition=Q(weight_kg__gte=0), name="setlog_weight_not_negative"),
+            models.CheckConstraint(
+                condition=Q(rpe__isnull=True) | (Q(rpe__gte=6) & Q(rpe__lte=10)),
+                name="setlog_rpe_range",
+            ),
+        ]

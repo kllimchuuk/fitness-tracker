@@ -3,7 +3,7 @@
 Source of truth for architecture. A change to anything in "Fixed decisions" is a decision and goes into
 [`DECISIONS.md`](DECISIONS.md), not just into code.
 
-Version: 2026-11-11.
+Version: 2026-11-24.
 
 ## Goal
 
@@ -52,13 +52,19 @@ the training engine, the AI coach, a JSON API, an MCP server, background reports
 
 Written honestly so that each item can be closed by a pull request and then removed from this list.
 
-- A workout session stores only its duration, not what was performed (no per-set results).
-- `Exercise.type` is a free-text field; there are no muscle groups or equipment.
-- `User.status` (ADMIN/CUSTOMER) is a leftover second source of truth next to `is_staff`; `limit_choices_to` and
-  the admin still filter by it.
-- There is no way to archive an exercise: one used in a plan cannot be deleted, only left in place.
 - The repository layer is a thin wrapper, views and services still call `objects.` directly in places (about 20 uses), and the services mix function and class styles.
 - `tracker/views.py` mixes HTML views and JSON endpoints in one 600-line module.
+
+## Data model (S1)
+
+- `SetLog`: one row per performed set of a session: `session`, `exercise` (`RESTRICT`), `set_number` (unique per
+  session and exercise), `reps` (at least 1), `weight_kg` (zero or more), `rpe` (optional, 6 to 10), `logged_at`.
+  The database enforces the ranges with check constraints. Sets are logged only in the user's own active session.
+- `WorkoutSession.plan` is `RESTRICT`: a plan that has sessions cannot be deleted (HTML redirects to the plan with
+  "Workout plan has logged sessions"), so the set history the engine reads is never lost with a plan.
+- `Exercise.primary_muscle` and `Exercise.equipment` are closed choice lists with `other` as the default;
+  `Exercise.type` stays a free-text category.
+- `Exercise.archived_at` (nullable): an archived exercise stays visible and loggable, but cannot be added to a plan.
 
 ## Target architecture
 
@@ -99,7 +105,8 @@ One branch and one pull request per slice, merged with a merge commit.
 | Slice | Content | Status |
 | --- | --- | --- |
 | S0 | CI, hygiene, uv and typed settings, Django auth, exercise ownership, agent configuration (`CLAUDE.md`, `.claude/`) | done |
-| S1 | Data model: per-set results, muscle groups and equipment, archived exercises, drop `User.status` | planned |
+| S1 | Data model: per-set results, muscle groups and equipment, archived exercises | done |
+| S1b | Drop `User.status` (`is_staff` stays the only admin marker); one `authentication` migration | planned |
 | S2 | Django Ninja API with OpenAPI, SSE view | planned |
 | S3 | Training engine: e1RM, double progression, plateau and deload state machine | planned |
 | S4 | LLM client: rate limit, response cache, versioned prompts, fakes | planned |

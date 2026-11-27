@@ -21,11 +21,11 @@
       "Bash(git commit -m:*)"
     ],
     "ask": [
-      "Bash(git push:*)",
-      "Bash(git merge:*)",
-      "Bash(git rebase:*)"
+      "Bash(git merge:*)"
     ],
     "deny": [
+      "Bash(git push:*)",
+      "Bash(git rebase:*)",
       "Bash(git push --force:*)",
       "Bash(git push -f:*)",
       "Bash(git reset --hard:*)",
@@ -57,6 +57,19 @@
       "Bash(docker compose exec:*)",
       "Read(./.env)",
       "Read(./**/.env)"
+    ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/main_session_guard.py\""
+          }
+        ]
+      }
     ]
   }
 }
