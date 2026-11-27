@@ -60,6 +60,8 @@ Written honestly so that each item can be closed by a pull request and then remo
 - `SetLog`: one row per performed set of a session: `session`, `exercise` (`PROTECT`), `set_number` (unique per
   session and exercise), `reps` (at least 1), `weight_kg` (zero or more), `rpe` (optional, 6 to 10), `logged_at`.
   The database enforces the ranges with check constraints. Sets are logged only in the user's own active session.
+- `WorkoutSession.plan` is `PROTECT`: a plan that has sessions cannot be deleted (HTML redirects to the plan with
+  "Workout plan has logged sessions"), so the set history the engine reads is never lost with a plan.
 - `Exercise.primary_muscle` and `Exercise.equipment` are closed choice lists with `other` as the default;
   `Exercise.type` stays a free-text category.
 - `Exercise.archived_at` (nullable): an archived exercise stays visible and loggable, but cannot be added to a plan.

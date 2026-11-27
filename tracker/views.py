@@ -36,6 +36,7 @@ from .service.exercise_set import add_exercise_set
 from .service.exercise_set import delete_exercise_set
 from .service.session import get_session_service
 from .service.weight_tracker import get_weight_tracker_service
+from .service.workout_plan import delete_workout_plan
 
 logger = logging.getLogger(__name__)
 session_repo = get_session_repository()
@@ -135,8 +136,13 @@ class WorkoutPlanUpdateView(LoginRequiredMixin, View):
 
 class WorkoutPlanDeleteView(LoginRequiredMixin, View):
     def post(self, request, plan_id: int):
-        plan = get_object_or_404(WorkoutPlan, id=plan_id, creator_id=request.user.id)
-        plan.delete()
+        try:
+            delete_workout_plan(plan_id, request.user)
+        except ServiceError as e:
+            if e.code == HTTPStatus.CONFLICT:
+                messages.error(request, f"Cannot delete: {e}.")
+                return redirect("tracker:plan_detail", plan_id=plan_id)
+            raise Http404
         messages.success(request, "Workout plan deleted.")
         return redirect("tracker:plans_list")
 

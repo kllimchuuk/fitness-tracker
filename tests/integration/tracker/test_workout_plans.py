@@ -2,9 +2,13 @@ import pytest
 from django.urls import reverse
 
 from tests.factories.tracker_factories import ExerciseSetFactory
+from tests.factories.tracker_factories import SetLogFactory
 from tests.factories.tracker_factories import WorkoutPlanFactory
+from tests.factories.tracker_factories import WorkoutSessionFactory
 from tracker.models import ExerciseSet
+from tracker.models import SetLog
 from tracker.models import WorkoutPlan
+from tracker.models import WorkoutSession
 
 LOGIN_URL = "/authentication/login/"
 
@@ -133,6 +137,25 @@ class TestWorkoutPlanDeleteView:
         other_plan = WorkoutPlanFactory()
         response = auth_client.post(self.url(other_plan.id))
         assert response.status_code == 404
+
+    def test_delete_keeps_plan_that_has_sessions(self, auth_client, plan, user):
+        WorkoutSessionFactory(user=user, plan=plan)
+        response = auth_client.post(self.url(plan.id))
+        assert response.status_code == 302
+        assert f"/plans/{plan.id}/" in response["Location"]
+        assert WorkoutPlan.objects.filter(id=plan.id).exists()
+        assert WorkoutSession.objects.filter(plan=plan).exists()
+
+    def test_delete_keeps_logged_sets_of_the_plan(self, auth_client, plan, user):
+        session = WorkoutSessionFactory(user=user, plan=plan)
+        SetLogFactory(session=session)
+        auth_client.post(self.url(plan.id))
+        assert SetLog.objects.filter(session=session).count() == 1
+
+    def test_delete_explains_why_plan_was_kept(self, auth_client, plan, user):
+        WorkoutSessionFactory(user=user, plan=plan)
+        response = auth_client.post(self.url(plan.id), follow=True)
+        assert "has logged sessions" in " ".join(str(m) for m in response.context["messages"])
 
 
 @pytest.mark.django_db

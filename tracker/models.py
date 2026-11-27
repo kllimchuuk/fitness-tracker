@@ -98,7 +98,7 @@ class WorkoutSession(models.Model):
         COMPLETED = "completed", "Completed"
 
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
-    plan = models.ForeignKey("WorkoutPlan", on_delete=models.CASCADE)
+    plan = models.ForeignKey("WorkoutPlan", on_delete=models.PROTECT)
     duration_minutes = models.PositiveIntegerField()
     status = models.CharField(max_length=16, choices=Status.choices, default=Status.ACTIVE)
     start_time = models.DateTimeField()
