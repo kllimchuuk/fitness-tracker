@@ -296,3 +296,10 @@ def test_settings_register_the_guard_and_deny_push() -> None:
     assert any("main_session_guard.py" in command for command in commands)
     assert "Bash(git push:*)" in settings["permissions"]["deny"]
     assert "Bash(git push:*)" not in settings["permissions"]["ask"]
+
+
+def test_settings_deny_rebase_like_the_guard() -> None:
+    settings = json.loads((ROOT / ".claude" / "settings.json").read_text())
+
+    assert "Bash(git rebase:*)" in settings["permissions"]["deny"]
+    assert "Bash(git rebase:*)" not in settings["permissions"]["ask"]
