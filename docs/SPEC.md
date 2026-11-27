@@ -105,7 +105,8 @@ One branch and one pull request per slice, merged with a merge commit.
 | Slice | Content | Status |
 | --- | --- | --- |
 | S0 | CI, hygiene, uv and typed settings, Django auth, exercise ownership, agent configuration (`CLAUDE.md`, `.claude/`) | done |
-| S1 | Data model: per-set results, muscle groups and equipment, archived exercises, drop `User.status` | done |
+| S1 | Data model: per-set results, muscle groups and equipment, archived exercises | done |
+| S1b | Drop `User.status` (`is_staff` stays the only admin marker); one `authentication` migration | planned |
 | S2 | Django Ninja API with OpenAPI, SSE view | planned |
 | S3 | Training engine: e1RM, double progression, plateau and deload state machine | planned |
 | S4 | LLM client: rate limit, response cache, versioned prompts, fakes | planned |

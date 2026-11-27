@@ -81,6 +81,7 @@ def create_and_save_user(email: str, password: str, age: int, height: float, goa
     return User.objects.create_user(
         email=email,
         password=password,
+        status=User.Status.CUSTOMER,
         age=age,
         height=height,
         goal=goal,
@@ -192,6 +193,7 @@ def profile_view(request: HttpRequest) -> HttpResponse:
         "profile.html",
         {
             "email": user.email,
+            "status": user.status,
             "age": user.age,
             "height": user.height,
             "goal": user.goal,

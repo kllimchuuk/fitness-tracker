@@ -21,7 +21,7 @@ class UserAdmin(BaseUserAdmin):
             },
         ),
         ("Important dates", {"fields": ("last_login", "date_joined")}),
-        ("Additional information", {"fields": ("age", "height", "goal")}),
+        ("Additional information", {"fields": ("status", "age", "height", "goal")}),
     )
 
     add_fieldsets = (
@@ -34,8 +34,8 @@ class UserAdmin(BaseUserAdmin):
         ),
     )
 
-    list_display = ("email", "is_staff", "is_active")
-    list_filter = ("is_staff", "is_active")
+    list_display = ("email", "status", "is_staff", "is_active")
+    list_filter = ("status", "is_staff", "is_active")
     search_fields = ("email",)
     ordering = ("email",)
 

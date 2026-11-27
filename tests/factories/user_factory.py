@@ -13,6 +13,7 @@ class UserFactory(DjangoModelFactory):
     age = 25
     height = 175.0
     goal = "Get fit"
+    status = User.Status.CUSTOMER
 
     @factory.post_generation
     def password(obj, create, extracted, **kwargs):

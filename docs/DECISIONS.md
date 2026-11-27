@@ -100,10 +100,9 @@ Each entry: date, decision, why, what changed. Newest at the bottom.
 
 ## 2026-11-24 — data model for the coach (S1)
 
-15. **Per-set logs, closed muscle and equipment lists, archived exercises, no `User.status`.**
+15. **Per-set logs, closed muscle and equipment lists, archived exercises.**
     - *Why:* the engine (S3) needs what was actually lifted, not a session duration; a free-text `type` cannot be
-      grouped; an exercise used in a plan or a log could never leave the catalog; `User.status` was a second
-      source of truth next to `is_staff`.
+      grouped; an exercise used in a plan or a log could never leave the catalog.
     - *Rules:*
       - `SetLog` stores `rpe` from the start because e1RM from reps and weight alone ignores how close to failure
         a set was; adding the column later would cost another migration. RPE accepts any number from 6 to 10,
@@ -114,10 +113,9 @@ Each entry: date, decision, why, what changed. Newest at the bottom.
       - An exercise with logged sets is protected from deletion (409 "archive it instead"). Archiving sets
         `archived_at`; visibility (I6) is unchanged. Archived exercises are hidden from the plan picker and refused
         when added to a plan (409); sets already in a plan, and logging in a session, keep working.
-      - `User.status` and the `limit_choices_to` built on it are removed; `is_staff` is the only admin marker.
+      - `limit_choices_to` on the user foreign keys is removed; it filtered on `User.status`, which is dropped in a separate pull request because it needs a migration in another app (see decision 17).
       - `WorkoutSession.duration_minutes` is unchanged: it is still set to 0 at start and computed at finish.
-    - *Migration:* `authentication.0006_remove_user_status` and `tracker.0006_set_logs_exercise_metadata_archive`,
-      one per app because Django cannot span apps in one file. Data is kept; the status values are dropped.
+    - *Migration:* `tracker.0006_set_logs_exercise_metadata_archive`, the only one of the pull request. Existing exercises get `other` and keep their data.
     - *Not in this slice:* HTTP routes for logging sets and for archiving or unarchiving an exercise (S2 adds them
       through Django Ninja, each with its I6 404 and 403 cases); `tracker.service.set_log` and
       `archive_exercise` / `unarchive_exercise` are what those routes will call. Until then the "archive it
@@ -136,7 +134,7 @@ Each entry: date, decision, why, what changed. Newest at the bottom.
 
 17. **A plan with sessions cannot be deleted (`WorkoutSession.plan` is `PROTECT`).**
     - *Why:* `CASCADE` removed every session of the plan and, through them, every `SetLog`; the engine (S3) reads that history, so deleting an outdated plan silently destroyed it. Same reasoning as `ExerciseSet.exercise` and `SetLog.exercise` (decision 10, 15). The owner approved the option on 2026-11-27.
-    - *Changed:* the `PROTECT` change is part of `tracker.0006_set_logs_exercise_metadata_archive`, because a pull request carries one migration per app; `tracker.service.workout_plan.delete_workout_plan` answers 409 "Workout plan has logged sessions" and the HTML view redirects to the plan with that message. Deleting a user still removes their plans and sessions together.
+    - *Changed:* the `PROTECT` change is part of `tracker.0006_set_logs_exercise_metadata_archive`, because a pull request carries exactly one migration; `tracker.service.workout_plan.delete_workout_plan` answers 409 "Workout plan has logged sessions" and the HTML view redirects to the plan with that message. Deleting a user still removes their plans and sessions together.
     - *Also:* `Bash(git rebase:*)` moved from `ask` to `deny` in `.claude/settings.json`, matching the main-session guard; a rebase is done by the owner.
     - *Not in this slice:* archiving a plan; the message does not offer it yet, and S2 decides whether plans get `archived_at` like exercises.
-    - *Migrations rule:* from 2026-11-27 a pull request carries exactly one migration. Pull request #20 is the one exception (`authentication.0006` and `tracker.0006`), accepted by the owner because `User.status` and the S1 tables live in different apps.
+    - *Migrations rule:* from 2026-11-27 a pull request carries exactly one migration. Removing `User.status` needs a migration in `authentication`, so it left the S1 pull request and is done in `chore/drop-user-status` (owner decision, 2026-11-27); `is_staff` becomes the only admin marker there.
