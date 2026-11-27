@@ -43,7 +43,7 @@ Invariants (SPEC, Invariants). Never break them; every change must keep a test f
 - Create the slice branch and commit locally; never run `git push`. The owner pushes, opens the pull request and merges with "Create a merge commit". Never squash.
 - Stage files by explicit path. Never `git add .`, never stage `.env`.
 - No `--amend`, `reset`, `rebase` or force options on existing history unless the owner asks.
-- Message: Conventional Commits in English, one-line subject describing behavior, body only when needed. Module and its tests go in one commit. No `Co-Authored-By` trailer and no "Generated with" line in commits or pull request descriptions.
+- Message: Conventional Commits in English, one-line subject describing behavior, body only when needed. Module and its tests go in one commit. Commits end with the `Co-Authored-By` trailer of the agent that made them; pull request descriptions carry no trailer and no "Generated with" line.
 - Commit only when `ruff` and `pytest` are green (docs-only commits excepted). After a series of commits show `git log --stat`.
 
 ## Stack and dependencies
